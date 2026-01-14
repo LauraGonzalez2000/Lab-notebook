@@ -18,8 +18,8 @@ from scipy.spatial.distance import pdist
 pt.set_style('manuscript')
 #%%  FUNCTIONS
 
-
 def plot_evoked_pattern(self,  
+                        pattern_cond = [], 
                         quantity='rawFluo',
                         rois=None,
                         with_stim_inset=True,
@@ -32,48 +32,44 @@ def plot_evoked_pattern(self,
                         axR=None, 
                         axT=None, 
                         behavior_split=False):
+    # CHECK EPISODES HAVE THE SAME NUMBER OF TRIALS AND FILTER
+    ep_s = []
+    for i in range(len(self)):  #for each file
+        resp = np.array(getattr(self[i], quantity))
+        if resp.shape[0] == self[0].dFoF.shape[0]:
+            ep_s.append(self[i])
+        else:
+            print(f"file {i} discarded because some trials are missing : {resp.shape[0]} instead of {self[0].dFoF.shape[0]} - way to fix this? ")
 
     # HANDLE DATA MISSING ##################
-    if with_stim_inset and (self[0].visual_stim is None):
+    if with_stim_inset and (ep_s[0].visual_stim is None):
         print('\n [!!] visual stim of episodes was not initialized  [!!]  ')
         print('    --> screen_inset display desactivated ' )
         with_stim_inset = False
 
     # SET FIGURE #################################################################
-    cond_s = []
-    
-    n_stim = len(np.unique(self[0].index))
-    
+    n_stim = len(np.unique(ep_s[0].index)) #assumes all files have same stimuli
+    if not behavior_split:
+        n_cond = n_stim
+    elif behavior_split: 
+        n_cond = n_stim*2 #columns are doubled 
+
+    #Calculate behavior condition for each file :
+    HMcond_s = []
+    for ep in ep_s:
+        HMcond = compute_high_arousal_cond(ep, pre_stim=1, running_speed_threshold=0.05, metric="locomotion")
+        HMcond = np.array(HMcond)
+        HMcond_s.append(HMcond)
+
+    #Calculate pattern condition for each stimulus
+    Patterncond_s = []
     for stim_id in range(n_stim):
-        pattern_cond = np.array([self[0].index[i] == stim_id for i in range(len(self[0].index))])
-        if behavior_split:
-            HMcond = compute_high_arousal_cond(self[0], pre_stim=1, running_speed_threshold=0.5, metric="locomotion")
-            HMcond = np.array(HMcond)  # ensure NumPy array
-
-            cond_act  = pattern_cond & HMcond      # element-wise AND
-            cond_rest = pattern_cond & (~HMcond)   # element-wise AND with negation
-
-            cond_s.append(cond_act)
-            cond_s.append(cond_rest)
-        else:
-            cond_s.append(pattern_cond)
-
-    n_cond = len(np.unique(self[0].index)) #number of stimulus
-
-    if behavior_split:
-        HMcond_s = []
-        for ep_i in range(len(cond_s)):
-            HMcond = compute_high_arousal_cond(self[ep_i], pre_stim=1, running_speed_threshold=0.5, metric="locomotion")
-            HMcond = np.array(HMcond)
-            HMcond_s.append(HMcond)
-        #HMcond shows the locomotion condition for each trial for each file
-
-        n_cond = len(np.unique(self[0].index))*2 #rest and run for each stimulus
+        pattern_cond = np.array([ep_s[0].index[i] == stim_id for i in range(len(ep_s[0].index))])
+        Patterncond_s.append(pattern_cond)
 
     ####### initialize figure
-    if (axR is None) or (axT is None):
-        fig, [axR, axT] = pt.figure(axes_extents=[[[1, 3]] * n_cond,                  
-                                                  [[1, int(3*factor_for_traces)]] * n_cond],
+    if axR is None:
+        fig, axR = pt.figure(axes_extents= [[[1,3]] * n_cond],
                                     ax_scale=ax_scale,
                                     left=0.3,
                                     top=(12 if with_stim_inset else 1),
@@ -82,52 +78,56 @@ def plot_evoked_pattern(self,
         fig = None
     
     # CALCULATE RESPONSE  
-    
     resp_s = []
-    for i in range(len(self)):
-        resp = np.array(getattr(self[i], quantity))
-        if resp.shape[0] == len(cond_s[0]):
-            resp_s.append(resp)
-        else : 
-            print("file data discarded because some trials are missing - fix this? ")
-    
-    filtered_resp_s = []
-    for resp in resp_s: 
+    for i in range(len(ep_s)):  #for each file
+        resp = np.array(getattr(ep_s[i], quantity))
+
         for stim_id in range(n_stim):
-            temp = resp[cond_s[stim_id],:,:]
-            filtered_resp_s.append(temp)
-
-    stim_lists = [[] for _ in range(n_cond)]
-    for i, resp in enumerate(filtered_resp_s):
+            if not behavior_split:
+                pattern_cond = Patterncond_s[stim_id]
+                temp = resp[pattern_cond,:,:]
+                resp_s.append(temp)
+            
+            elif behavior_split:
+                HMcond = HMcond_s[i]
+                pattern_cond = Patterncond_s[stim_id]
+                final_cond = HMcond & pattern_cond
+                temp = resp[final_cond,:,:]
+                resp_s.append(temp)
+                final_cond2= ~HMcond & pattern_cond
+                temp2 = resp[final_cond2,:,:]
+                resp_s.append(temp2)
+           
+    column_lists = [[] for _ in range(n_cond)] # column[i] will store the responses of this specific stimuli with behavioral condition if needed
+    
+    for i, resp in enumerate(resp_s):
         stim_idx = i % n_cond      # cycles through 0,1,...,n_stimuli-1
-        stim_lists[stim_idx].append(resp)
+        column_lists[stim_idx].append(resp)
 
-    for i in range(len(stim_lists)):
-
-        print(" Stimulus : ", i)
+    #FILL IMAGE
+    for i in range(len(column_lists)):
+        print(" Column : ", i)
         # VISUAL STIM ###############################################################
-        stim_idx = i #// 2  # 0-based stimulus index
+        stim_idx = i
         stim_inset = pt.inset(axR[stim_idx], [0.2, 1.3, 0.6, 0.6])
-        self[0].visual_stim.plot_stim_picture(stim_idx, ax=stim_inset, vse=True)
-        vse = self[0].visual_stim.get_vse(stim_idx)
-        
+       
         if behavior_split==False:
+            stim = stim_idx
+            ep_s[0].visual_stim.plot_stim_picture(stim, ax=stim_inset, vse=True)
             axR[stim_idx].set_title(f"STIM {stim_idx+1}", y=1)
         else: 
-            stim = stim_idx // 2 + 1
+            stim = stim_idx // 2
             state = "ACT" if stim_idx % 2 == 0 else "REST"
+            ep_s[0].visual_stim.plot_stim_picture(stim, ax=stim_inset, vse=True)
             axR[stim_idx].set_title(f"STIM {stim} {state}", y=1)
 
         
+
         # RASTER ######################################################################
         # mean response for raster
-        resp = stim_lists[i]
+        resp = column_lists[i]
         mean_resp = [np.nanmean(r, axis=0) for r in resp]
         combined = np.concatenate(mean_resp, axis=0)
-        print("combined : ", len(combined))
-        print("shape : ", combined[0].shape)
-        print("example : ", combined[0])
-
         
         if raster_norm=='full':
             combined = (combined-combined.min(axis=1).reshape(len(combined),1))
@@ -142,98 +142,28 @@ def plot_evoked_pattern(self,
 
         # Plot raster
         axR[stim_idx].imshow(combined,
-                      cmap=pt.binary,
-                      aspect='auto', interpolation='none',
-                      vmin=0, vmax=2,
-                      extent=(self[0].t[0], self[0].t[-1], 0, combined.shape[0]))
+                             cmap=pt.binary,
+                             aspect='auto', interpolation='none',
+                             vmin=0, vmax=2,
+                             extent=(ep_s[0].t[0], ep_s[0].t[-1], 0, combined.shape[0]))
 
-        pt.set_plot(axR[stim_idx], [], xlim=[self[0].t[0], self[0].t[-1]])
+        pt.set_plot(axR[stim_idx], [], xlim=[ep_s[0].t[0], ep_s[0].t[-1]])
        
         pt.bar_legend(axR[stim_idx], 
-                    colorbar_inset=dict(rect=[1.1,.1,.04,.8], facecolor=None),
-                    colormap=pt.binary,
-                    bar_legend_args={},
-                    label='n. $\\Delta$F/F',
-                    bounds=None,
-                    ticks = None,
-                    ticks_labels=None,
-                    no_ticks=False,
-                    orientation='vertical')
+                      colorbar_inset=dict(rect=[1.1,.1,.04,.8], facecolor=None),
+                      colormap=pt.binary,
+                      bar_legend_args={},
+                      label='n. $\\Delta$F/F',
+                      bounds=None,
+                      ticks = None,
+                      ticks_labels=None,
+                      no_ticks=False,
+                      orientation='vertical')
         
-        
-        # PLOT INDIVIDUAL TRACES #######################################################
-        '''
-
-        #start from resp 
-        
-        if rois is None:
-            print(resp[0].shape[1])
-            rois = np.random.choice(np.arange(len(combined)), 5, replace=False)
-
-        print(rois)
-
-        
-        n_trials = np.sum(cond_s[stim_id])
-
-        if n_trials == 0:
-            print(f"Skipping plotting for condition : no valid trials")
-        else:
-            for ir, roi in enumerate(rois):
-                roi_resp = combined[roi]
-                roi_resp = roi_resp - roi_resp.mean()
-                scale = max([min_dFof_range, np.max(roi_resp)])
-                roi_resp /= scale
-
-                # vertical line
-                axT[stim_idx].plot([self[0].t[-1], self[0].t[-1]], [.25+ir, .25+ir+1./scale], 'k-', lw=2)
-
-                if with_mean_trace:
-                    pt.plot(self[0].t, ir+roi_resp.mean(axis=0), 
-                            sy=roi_resp.std(axis=0), ax=axT[stim_idx], no_set=True)
-
-                # individual trial traces
-                for iep in range(n_trials):
-                    axT[stim_idx].plot(self[0].t, ir+roi_resp[iep,:], 
-                                color=pt.tab10(iep/(n_trials-1)), lw=.5)
-
-        '''
-        '''
-        for ir, r in enumerate(rois):
-            roi_resp = resp_s[cond, r, :]
-            roi_resp = roi_resp - roi_resp.mean()
-            scale = max([min_dFof_range, np.max(roi_resp)])
-            roi_resp /= scale
-            axT[k].plot([self[0].t[-1], self[0].t[-1]], [.25+ir, .25+ir+1./scale], 'k-', lw=2)
-
-            if with_mean_trace:
-                pt.plot(self[0].t, ir+roi_resp.mean(axis=0), 
-                        sy=roi_resp.std(axis=0),ax=axT[k], no_set=True)
-           
-            for iep in range(np.sum(cond)):
-                axT[k].plot(self[0].t, ir+roi_resp[iep,:], color=pt.tab10(iep/(np.sum(cond)-1)), lw=.5)
-        
-        pt.set_plot(axT[k], [], xlim=[self[0].t[0], self[0].t[-1]])
-        pt.draw_bar_scales(axT[k], Xbar=Tbar, Xbar_label=str(Tbar)+'s', Ybar=1e-12)
-
-        pt.bar_legend(axT[k], 
-                      X=np.arange(np.sum(cond)),
-                      colorbar_inset=dict(rect=[1.1,1-.8/factor_for_traces,
-                                                .04,.8/factor_for_traces], facecolor=None),
-                    colormap=pt.jet,
-                    label='trial ID',
-                    no_ticks=True,
-                    orientation='vertical')
-
-        if vse is not None:
-            for t in [0]+list(vse['t'][vse['t']<self[0].visual_stim.protocol['presentation-duration']]):
-                axR[k].plot([t,t], axR[k].get_ylim(), 'r-', lw=0.3)
-                axT[k].plot([t,t], axT[k].get_ylim(), 'r-', lw=0.3)
-        '''
-        #pt.set_style('manuscript')
-            
     return fig
 
-#%% MY_version ###############################################
+
+# MY_version ###############################################
 ##############################################################
 ##############################################################
 
@@ -255,26 +185,42 @@ for index in range(len(SESSIONS['files'])):
     data.init_visual_stim()
     data_s.append(data)
 #%%
-protocols = ["static-patch"]#,  "drifting-gratings", "Natural-Images-4-repeats"]
+#protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
+protocols = ["Natural-Images-4-repeats"]
 
+ep_s_ = []
 for protocol in protocols: 
     ep_s = []
     for data in data_s: 
+        data.init_visual_stim()
         ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed'])
+        print(len(data.visual_stim.experiment['index']), len(ep.protocol_cond_in_full_data))
         ep.init_visual_stim(data)
         ep_s.append(ep)
+    ep_s_.append(ep_s)
+
 
 #%%
-for protocol in protocols: 
-    plot_evoked_pattern(ep_s, quantity='dFoF', with_mean_trace=True, behavior_split=False)
+ep = ep_s[0]
+#%% 
+########################################################################
+##################### NOT SPLITTING BEHAVIOR ###########################
+########################################################################
+for p, protocol in enumerate(protocols):
+    plot_evoked_pattern(ep_s_[p], quantity='dFoF', with_stim_inset=True, behavior_split=False)
 
 #%%
-
 ########################################################################
-########### BEHAVIOR ###################################################
+###################### SPLITTING BEHAVIOR ##############################
 ########################################################################
-# STATIC PATCH REST VS ACTIVE
+for p, protocol in enumerate(protocols):
+    plot_evoked_pattern(ep_s_[p], quantity='dFoF', with_stim_inset=True, behavior_split=True)
 
+
+
+#%%
+# OTHER
+'''
 protocol = "static-patch" 
 #protocol = "drifting-gratings"
 #protocol = "Natural-Images-4-repeats"
@@ -286,9 +232,6 @@ ep = EpisodeData(data,
 ep.init_visual_stim(data)
 
 HMcond = compute_high_arousal_cond(ep, pre_stim = pre_stim, running_speed_threshold=0.5, metric="locomotion")
-
-print(HMcond)
-
 pattern_cond = []
 
 for index in range(len(np.unique(ep.index))):
@@ -299,18 +242,86 @@ for index in range(len(np.unique(ep.index))):
     pattern_cond.append(pattern_cond_temp_rest)
 
 pattern_cond_ = list(pattern_cond)
-print(pattern_cond_[3])
+## careful, pattern cond only taken with 1 file
+'''
 
-plot_evoked_pattern(ep, pattern_cond_,
-                        quantity='dFoF')
-pt.plt.show()
+# PLOT INDIVIDUAL TRACES #######################################################
+'''
+
+#start from resp 
+
+if rois is None:
+    print(resp[0].shape[1])
+    rois = np.random.choice(np.arange(len(combined)), 5, replace=False)
+
+print(rois)
 
 
+n_trials = np.sum(cond_s[stim_id])
+
+if n_trials == 0:
+    print(f"Skipping plotting for condition : no valid trials")
+else:
+    for ir, roi in enumerate(rois):
+        roi_resp = combined[roi]
+        roi_resp = roi_resp - roi_resp.mean()
+        scale = max([min_dFof_range, np.max(roi_resp)])
+        roi_resp /= scale
+
+        # vertical line
+        axT[stim_idx].plot([self[0].t[-1], self[0].t[-1]], [.25+ir, .25+ir+1./scale], 'k-', lw=2)
+
+        if with_mean_trace:
+            pt.plot(self[0].t, ir+roi_resp.mean(axis=0), 
+                    sy=roi_resp.std(axis=0), ax=axT[stim_idx], no_set=True)
+
+        # individual trial traces
+        for iep in range(n_trials):
+            axT[stim_idx].plot(self[0].t, ir+roi_resp[iep,:], 
+                        color=pt.tab10(iep/(n_trials-1)), lw=.5)
+
+'''
+'''
+for ir, r in enumerate(rois):
+    roi_resp = resp_s[cond, r, :]
+    roi_resp = roi_resp - roi_resp.mean()
+    scale = max([min_dFof_range, np.max(roi_resp)])
+    roi_resp /= scale
+    axT[k].plot([self[0].t[-1], self[0].t[-1]], [.25+ir, .25+ir+1./scale], 'k-', lw=2)
+
+    if with_mean_trace:
+        pt.plot(self[0].t, ir+roi_resp.mean(axis=0), 
+                sy=roi_resp.std(axis=0),ax=axT[k], no_set=True)
+    
+    for iep in range(np.sum(cond)):
+        axT[k].plot(self[0].t, ir+roi_resp[iep,:], color=pt.tab10(iep/(np.sum(cond)-1)), lw=.5)
+
+pt.set_plot(axT[k], [], xlim=[self[0].t[0], self[0].t[-1]])
+pt.draw_bar_scales(axT[k], Xbar=Tbar, Xbar_label=str(Tbar)+'s', Ybar=1e-12)
+
+pt.bar_legend(axT[k], 
+                X=np.arange(np.sum(cond)),
+                colorbar_inset=dict(rect=[1.1,1-.8/factor_for_traces,
+                                        .04,.8/factor_for_traces], facecolor=None),
+            colormap=pt.jet,
+            label='trial ID',
+            no_ticks=True,
+            orientation='vertical')
+
+if vse is not None:
+    for t in [0]+list(vse['t'][vse['t']<self[0].visual_stim.protocol['presentation-duration']]):
+        axR[k].plot([t,t], axR[k].get_ylim(), 'r-', lw=0.3)
+        axT[k].plot([t,t], axT[k].get_ylim(), 'r-', lw=0.3)
+'''
+#pt.set_style('manuscript')
 
 
 #%% DEMO #####################################################
 ##############################################################
 ##############################################################
+
+
+'''
 def plot_evoked_pattern_demo(self, 
                         pattern_cond, 
                         quantity='rawFluo',
@@ -441,3 +452,4 @@ for index in range(len(np.unique(ep.index))):
     plot_evoked_pattern_demo(ep, pattern_cond,
                         quantity='dFoF')
     pt.plt.show()
+'''

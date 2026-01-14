@@ -27,6 +27,9 @@ import random
 import time
 
 #%%
+#######################################################################################################
+##################################### FUNCTIONS #######################################################
+####################################################################################################### 
 def find_available_settings(data, debug=False):
 
     settings = {'Locomotion': {'fig_fraction': 1,
@@ -434,9 +437,6 @@ def create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, 
 
     return 0
 
-##################################################################################################################
-##################################################################################################################
-#%%
 def plot_responsiveness2_per_protocol(data_s, AX,idx,p, type='means'):
     pos_s = []
     neg_s = []
@@ -690,8 +690,10 @@ fig1, _     = plot_dFoF_per_protocol(data_s=data_s, protocols=protocols)
 #%% [markdown]
 # ## NDNF CRE BATCH 1
 
-#%%
 
+
+#%%
+'''
 datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch1','NWBs_run')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
@@ -712,16 +714,16 @@ for idx, filename in enumerate(SESSIONS['files']):
     data.build_facemotion()
     data.build_pupil_diameter()
     data_s.append(data)
-
+'''
 #%% [markdown]
 # ## All individual files
 #%%
 
-generate_figures(data_s, cell_type='NDNF', subplots_n=5, data_type = 'Sofia')
+#generate_figures(data_s, cell_type='NDNF', subplots_n=5, data_type = 'Sofia')
 
 #%% [mardown]
 # ## GROUPED ANALYSIS
 #%%
 
-fig1, fig2, fig3, fig4 = generate_figures_GROUP(data_s, subplots_n=5)
-create_group_PDF(fig1, fig2, fig3, fig4, 'NDNF')
+#fig1, fig2, fig3, fig4 = generate_figures_GROUP(data_s, subplots_n=5)
+#create_group_PDF(fig1, fig2, fig3, fig4, 'NDNF')

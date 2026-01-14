@@ -98,6 +98,28 @@ class AlluvialTool:
         return iwd
 
     def get_ordered_label_groups(self, src_label_override=None, dst_label_override=None, **kwargs):
+        _ = kwargs
+
+        if src_label_override is not None:
+            src_ordered_labels = list(src_label_override)
+        else:
+            src_ordered_labels = sorted(
+                self.input_data_dict.keys(),
+                key=lambda x: self.item_width_dict[x]
+            )
+
+        if dst_label_override is not None:
+            dst_ordered_labels = list(dst_label_override)
+        else:
+            dst_ordered_labels = sorted(
+                {dst for dsts in self.input_data_dict.values() for dst in dsts},
+                key=lambda x: self.item_width_dict[x]
+            )
+
+        return src_ordered_labels, dst_ordered_labels
+
+    '''
+    def get_ordered_label_groups(self, src_label_override=None, dst_label_override=None, **kwargs):
         # TODO: Remove code duplication from creation of src, dst lists
         _ = kwargs
 
@@ -109,7 +131,7 @@ class AlluvialTool:
             key=lambda x: self.item_width_dict[x])
 
         return src_ordered_labels, dst_ordered_labels
-
+    '''
     def get_group_widths(self):
         return [self.get_group_width(group) for group in (self.src_group, self.dst_group)]
 
