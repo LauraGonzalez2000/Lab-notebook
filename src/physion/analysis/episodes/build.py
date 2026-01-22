@@ -476,7 +476,15 @@ class EpisodeData:
 
         for key in self.visual_stim.experiment:
             for i, data_i in enumerate(all_eps[self.protocol_cond_in_full_data]):
-                self.visual_stim.experiment[key][i] = full_data.visual_stim.experiment[key][data_i]
+                #quick fix # TO ARRANGE!!
+                if key=='bg-color':
+                    pass
+                else:
+                    self.visual_stim.experiment[key][i] = full_data.visual_stim.experiment[key][data_i]
+                
+                #self.visual_stim.experiment[key][i] = full_data.visual_stim.experiment[key][data_i]
+                #end quick fix
+
 
         
     
