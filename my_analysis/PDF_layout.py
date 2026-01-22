@@ -374,10 +374,11 @@ class PDF_angle_contrast:
 
         # --- Define panels using inch-based coordinates
         # Format: X0, Y0, DX, DY (in inches)
-        self.AXs['Traces'] = self.create_panel([0.5, 0.5, 7, 4], 'Traces', hide_axis=True)
-        self.AXs['Variation dFoF'] = self.create_panel([0, 4.5, 5, 2], 'Variation dFoF')
-        self.AXs['Responsiveness roi'] = self.create_panel([4.5, 3.5, 2, 2], 'Responsiveness roi')
-        self.AXs['Responsiveness session'] = self.create_panel([4.5, 5.5, 2, 2], 'Responsiveness session')
+        self.AXs['Notes']                  = self.create_panel([0.5, 0.5, 7, 1], 'Notes', hide_axis=True)
+        self.AXs['Traces']                 = self.create_panel([0.5, 1.5, 7, 2], 'Traces', hide_axis=True)
+        self.AXs['Variation dFoF']         = self.create_panel([0.5, 3.5, 2, 2], 'Variation dFoF')
+        self.AXs['Responsiveness roi']     = self.create_panel([3.5, 3.5, 2, 2], 'Responsiveness roi')
+        self.AXs['Responsiveness session'] = self.create_panel([6.5, 3.5, 2, 2], 'Responsiveness session')
 
         plt.tight_layout()
 
@@ -410,7 +411,13 @@ class PDF_angle_contrast:
         for key in self.AXs:
             self.AXs[key].axis('off')
 
-            if key=='Traces':
+            if key=="Notes": 
+                self.AXs[key].axis('off')
+                txt = "Protocol Orientations and Contrasts "
+                self.AXs[key].text(0.1, 0.9, txt, va='top', ha='left', fontsize=10, wrap=True)
+
+
+            elif key=='Traces':
                 self.AXs[key].imshow(image1)
             
             elif key=='Variation dFoF':

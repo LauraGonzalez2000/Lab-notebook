@@ -6,10 +6,12 @@
 import os, sys
 import numpy as np
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 import physion.utils.plot_tools as pt
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.analysis.episodes.build import EpisodeData
+
+sys.path += ['..']
 from utils_.General_overview_episodes import compute_high_arousal_cond
 
 from scipy.cluster.hierarchy import linkage, leaves_list
@@ -18,7 +20,7 @@ from scipy.spatial.distance import pdist
 pt.set_style('manuscript')
 #%%  FUNCTIONS
 
-def plot_evoked_pattern(self,  
+def plot_evoked_pattern(EP_s,  
                         pattern_cond = [], 
                         quantity='rawFluo',
                         rois=None,
@@ -32,21 +34,23 @@ def plot_evoked_pattern(self,
                         axR=None, 
                         axT=None, 
                         behavior_split=False):
-    # CHECK EPISODES HAVE THE SAME NUMBER OF TRIALS AND FILTER
+    # CHECK EPISODES HAVE THE SAME NUMBER OF TRIALS AND FILTER - HANDLE MISSING DATA
     ep_s = []
-    for i in range(len(self)):  #for each file
-        resp = np.array(getattr(self[i], quantity))
-        if resp.shape[0] == self[0].dFoF.shape[0]:
-            ep_s.append(self[i])
+    for i in range(len(EP_s)):  #for each file
+        resp = np.array(getattr(EP_s[i], quantity))
+        if resp.shape[0] == EP_s[0].dFoF.shape[0]:
+            ep_s.append(EP_s[i])
         else:
-            print(f"file {i} discarded because some trials are missing : {resp.shape[0]} instead of {self[0].dFoF.shape[0]} - way to fix this? ")
+            print(f"file {i} discarded because some trials are missing : {resp.shape[0]} instead of {EP_s[0].dFoF.shape[0]} - way to fix this? ")
 
-    # HANDLE DATA MISSING ##################
     if with_stim_inset and (ep_s[0].visual_stim is None):
         print('\n [!!] visual stim of episodes was not initialized  [!!]  ')
         print('    --> screen_inset display desactivated ' )
         with_stim_inset = False
 
+   
+    nRois = np.sum([getattr(EP_s[i], quantity).shape[1] for i in range(len(EP_s))])
+    print("nROIS : ", nRois)
     # SET FIGURE #################################################################
     n_stim = len(np.unique(ep_s[0].index)) #assumes all files have same stimuli
     if not behavior_split:
@@ -70,17 +74,21 @@ def plot_evoked_pattern(self,
     ####### initialize figure
     if axR is None:
         fig, axR = pt.figure(axes_extents= [[[1,3]] * n_cond],
-                                    ax_scale=ax_scale,
-                                    left=0.3,
-                                    top=(12 if with_stim_inset else 1),
-                                    right=3)
+                             ax_scale=ax_scale,
+                             left=0.3,
+                             top=(12 if with_stim_inset else 1),
+                             right=3, 
+                             figsize=(12, nRois * 0.15))
+        
     else:
         fig = None
     
     # CALCULATE RESPONSE  
     resp_s = []
     for i in range(len(ep_s)):  #for each file
+
         resp = np.array(getattr(ep_s[i], quantity))
+        print("resp", resp.shape)
 
         for stim_id in range(n_stim):
             if not behavior_split:
@@ -105,6 +113,7 @@ def plot_evoked_pattern(self,
         column_lists[stim_idx].append(resp)
 
     #FILL IMAGE
+    order_mantained = []
     for i in range(len(column_lists)):
         print(" Column : ", i)
         # VISUAL STIM ###############################################################
@@ -122,7 +131,6 @@ def plot_evoked_pattern(self,
             axR[stim_idx].set_title(f"STIM {stim} {state}", y=1)
 
         
-
         # RASTER ######################################################################
         # mean response for raster
         resp = column_lists[i]
@@ -133,13 +141,22 @@ def plot_evoked_pattern(self,
             combined = (combined-combined.min(axis=1).reshape(len(combined),1))
         else:
             pass
-
-        #reorder neurons by similarity
+        
+        #reorder neurons by similarity (but keep same order between act and rest)
         dist = pdist(combined, metric='correlation')
         Z = linkage(dist, method='average')
-        order = leaves_list(Z)
-        combined = combined[order, :]
+        
+        if not behavior_split: 
+            order = leaves_list(Z)
+        if behavior_split and state == "ACT":
+            order = leaves_list(Z)
+        elif behavior_split and state== "REST":
+            order = order_mantained #not recalculated, taking the previous one (ACT of the same stim)
 
+        combined = combined[order, :]
+        order_mantained = order
+        
+        print(len(combined))
         # Plot raster
         axR[stim_idx].imshow(combined,
                              cmap=pt.binary,
@@ -162,13 +179,13 @@ def plot_evoked_pattern(self,
         
     return fig
 
-
+#%%
 # MY_version ###############################################
 ##############################################################
 ##############################################################
 
 #LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs-test')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
@@ -182,32 +199,35 @@ for index in range(len(SESSIONS['files'])):
     filename = SESSIONS['files'][index]
     data = Data(filename,verbose=False)
     data.build_dFoF(**dFoF_options, verbose=False)
-    data.init_visual_stim()
+    data.init_visual_stim() #initializes visual stim (7 protocols (experiments) per file)
     data_s.append(data)
 #%%
 #protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
-protocols = ["Natural-Images-4-repeats"]
+protocols = ["drifting-gratings"]
 
 ep_s_ = []
 for protocol in protocols: 
     ep_s = []
-    for data in data_s: 
-        data.init_visual_stim()
+    for i, data in enumerate(data_s): 
+        print(i)
         ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed'])
-        print(len(data.visual_stim.experiment['index']), len(ep.protocol_cond_in_full_data))
-        ep.init_visual_stim(data)
+        ep.init_visual_stim(data) 
+        
         ep_s.append(ep)
     ep_s_.append(ep_s)
 
 
 #%%
 ep = ep_s[0]
+data = data_s[0]
+ep.init_visual_stim(data)
 #%% 
 ########################################################################
 ##################### NOT SPLITTING BEHAVIOR ###########################
 ########################################################################
 for p, protocol in enumerate(protocols):
-    plot_evoked_pattern(ep_s_[p], quantity='dFoF', with_stim_inset=True, behavior_split=False)
+    ep_s = ep_s_[p]
+    plot_evoked_pattern(ep_s, quantity='dFoF', with_stim_inset=True, behavior_split=False)
 
 #%%
 ########################################################################

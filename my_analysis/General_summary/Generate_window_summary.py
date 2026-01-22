@@ -6,20 +6,21 @@ import os, sys
 
 import numpy as np
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 import physion.utils.plot_tools as pt
 from physion.intrinsic.tools import *
 from physion.intrinsic.analysis import RetinotopicMapping
+from physion.intrinsic import tools as intrinsic_analysis
+
 import matplotlib.pylab as plt
 from PIL import Image
+sys.path += ['..']
 from PDF_layout import PDF4
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
 
 #%%
-
-
 def figure_to_array(fig):
             """Convert a matplotlib Figure to a NumPy array"""
             canvas = FigureCanvas(fig)
@@ -39,23 +40,48 @@ def generate_figures(dataFolder, segmentation_params):
     maps = np.load(os.path.join(dataFolder, 'raw-maps.npy') , 
                 allow_pickle=True).item()
     #fig 2 : altitude map
-    fig2 = plot_retinotopic_maps(maps, map_type='altitude');
+    fig2 = intrinsic_analysis.plot_retinotopic_maps(maps, map_type='altitude');
 
     #fig 3 : azimuth map
-    fig3 = plot_retinotopic_maps(maps, map_type='azimuth');
+    fig3 = intrinsic_analysis.plot_retinotopic_maps(maps, map_type='azimuth');
 
     #fig 4, 5 : sign maps; power maps
-    data = build_trial_data(maps)
+    data = intrinsic_analysis.build_trial_data(maps)
     data['vasculatureMap'] = imVasc[::int(imVasc.shape[0]/data['aziPosMap'].shape[0]),\
                                     ::int(imVasc.shape[1]/data['aziPosMap'].shape[1])]
     
     data['params'] = segmentation_params
     trial = RetinotopicMapping.RetinotopicMappingTrial(**data)
     trial.processTrial(isPlot=False) # TURN TO TRUE TO VISUALIZE THE SEGMENTATION STEPS
-    out = trial._getSignMap(isPlot=True)
-    fig4 = out["fig_sign"]
-    fig5 = out["fig_power"]
+    
+    fig4, AX4 = plt.subplots(2, 3, figsize=(6, 4))
 
+    AX4[0, 0].imshow(trial.altPosMap)
+    AX4[0, 1].imshow(trial.aziPosMap)
+    AX4[0, 2].imshow(trial.signMap)
+
+    AX4[1, 0].imshow(trial.altPosMapf)
+    AX4[1, 1].imshow(trial.aziPosMapf)
+    AX4[1, 2].imshow(trial.signMapf)
+
+    titles = [
+    "Altitude Pos", "Azimuth Pos", "Sign",
+    "Altitude Pos \nfiltered", "Azimuth Pos \nfiltered", "Sign \nfiltered"
+    ]
+    for ax, title in zip(AX4.flat, titles):
+        ax.set_title(title)
+        ax.axis("off")
+
+    fig5, AX5 = plt.subplots(1, 2, figsize=(6, 4))
+
+    AX5[0].imshow(trial.altPowerMap)
+    AX5[1].imshow(trial.aziPowerMap)
+    
+    titles = ["Altitude Power Map", "Azimuth Power Map"]
+    for ax, title in zip(AX5.flat, titles):
+        ax.set_title(title)
+        ax.axis("off")
+    
     #patches
     fig6, ax = pt.figure(ax_scale=(2,5))
     h = RetinotopicMapping.plotPatches(trial.finalPatches, 
@@ -90,7 +116,6 @@ def generate_figures(dataFolder, segmentation_params):
         print("No patches found or issue")
     
 
-
     fig1 = figure_to_array(fig1)
     fig2 = figure_to_array(fig2)
     fig3 = figure_to_array(fig3)
@@ -123,7 +148,7 @@ def create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, segmen
 ######################################################################################################
 
 #%%
-base_folder = os.path.join(os.path.expanduser('~'),'DATA', 'In_Vivo_experiments', 'NDNF-Cre-batch2','Processed', 'intrinsic_img', '2025_12_09')
+base_folder = os.path.join(os.path.expanduser('~'),'DATA', 'In_Vivo_experiments', 'NDNF-Cre-batch3','Processed', 'intrinsic_img', '2026_01_16')
 
 '''
 segmentation_params={'phaseMapFilterSigma': 8.,

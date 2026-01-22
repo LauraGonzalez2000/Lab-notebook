@@ -5,17 +5,19 @@
 import os, sys
 import numpy as np
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.utils import plot_tools as pt
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.dataviz.imaging import show_CaImaging_FOV
 from physion.dataviz.imaging import show_CaImaging_FOV
 from physion.dataviz.raw import plot as plot_raw
 from physion.analysis.episodes.build import EpisodeData
+from physion.analysis.episodes.trial_statistics import pre_post_statistics
 
 from scipy import stats
 import random
-from PDF_layout import PDF, PDF2, PDF3, PDF3_, PDF_angle_contrast
+sys.path += ['..']
+from PDF_layout import PDF, PDF2, PDF3, PDF_angle_contrast
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import random
@@ -124,11 +126,14 @@ def calc_responsiveness(ep, nROIs):
                                 interval_post=[t0, t0+1.5],                                   
                                 test='ttest', 
                                 sign='both')
-        roi_summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-                                                   #exclude_keys=['repeat'],
-                                                   exclude_keys= list(ep.varied_parameters.keys()), # we merge different stimulus properties as repetitions of the stim. type  
-                                                   response_significance_threshold=0.05,
-                                                   response_args=dict(roiIndex=roi_n))
+        
+        roi_summary_data = pre_post_statistics(ep,
+                                               episode_cond = ep.find_episode_cond(),
+                                               response_args = dict(roiIndex=roi_n),
+                                               response_significance_threshold=0.05,
+                                               stat_test_props=stat_test_props,
+                                               repetition_keys=['repeat'])
+
         session_summary['significant'].append(bool(roi_summary_data['significant'][0]))
         session_summary['value'].append(roi_summary_data['value'][0])
 
@@ -153,15 +158,15 @@ def compute_responsiveness(ep, nROIs, alpha=0.05, window=1.5):
     )
 
     for roi_n in range(nROIs):
-        roi_summary_data = ep.compute_summary_data(
-            stat_test_props=stat_test_props,
-            exclude_keys=list(ep.varied_parameters.keys()),
-            response_significance_threshold=alpha,
-            response_args=dict(roiIndex=roi_n)
-        )
-
-        session_summary['significant'].append(bool(roi_summary_data['significant'][0]))
-        session_summary['value'].append(roi_summary_data['value'][0])
+        roi_summary_data = pre_post_statistics(ep,
+                                               episode_cond = ep.find_episode_cond(),
+                                               response_args = dict(roiIndex=roi_n),
+                                               response_significance_threshold=alpha,
+                                               stat_test_props=stat_test_props,
+                                               repetition_keys=list(ep.varied_parameters.keys()))
+        
+        session_summary['significant'].append(bool(roi_summary_data['significant']))
+        session_summary['value'].append(roi_summary_data['value'])
 
     significant = np.array(session_summary['significant'])
     values = np.array(session_summary['value'])
@@ -195,11 +200,13 @@ def get_roiIndex(data, type='pos', protocol="Natural-Images-4-repeats"):
                                 sign='both')
 
     for roi_n in range(data.nROIs):
-        roi_summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-                                                    #exclude_keys=['repeat'],
-                                                    exclude_keys= list(ep.varied_parameters.keys()), # we merge different stimulus properties as repetitions of the stim. type  
-                                                    response_significance_threshold=0.05,
-                                                    response_args=dict(roiIndex=roi_n))
+        
+        roi_summary_data = pre_post_statistics(ep,
+                                               episode_cond = ep.find_episode_cond(),
+                                               response_args = dict(roiIndex=roi_n),
+                                               response_significance_threshold=0.05,
+                                               stat_test_props=stat_test_props,
+                                               repetition_keys=list(ep.varied_parameters.keys()))
         
         session_summary['significant'].append(bool(roi_summary_data['significant']))
         session_summary['value'].append(roi_summary_data['value'])
@@ -240,12 +247,21 @@ def get_roiIndex(data, type='pos', protocol="Natural-Images-4-repeats"):
             found = False
 
     elif type=='ns':
-        roiIndex = random.choice(ns_roi) 
+        if len(ns_roi) >0: 
+            roiIndex = random.choice(ns_roi) 
+        else : 
+            print("No ns ROIs found — choosing from significant set instead.")
+            try : 
+                roiIndex = random.choice(pos_roi)
+                found = False
+            except : 
+                roiIndex = random.choice(neg_roi)
+                found = False
+
 
     return roiIndex, found
 
 ### PLOT functions ###
-
 def plot_protocol_responsiveness(ep, nROIs, AX, protocol="", idx=None, colors=['green', 'red', 'grey']):
     ax = AX[idx] if idx is not None else AX
 
@@ -276,10 +292,16 @@ def plot_protocol_ddFoF(ep, AX, idx, protocol="", subplots_n=16):
                             test='ttest', 
                             sign='both')
     
-    summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-                                            exclude_keys=['repeat'],
-                                            response_significance_threshold=0.05,
-                                            response_args={})
+    summary_data = pre_post_statistics(ep,
+                                       episode_cond = ep.find_episode_cond(),
+                                       response_args = {},
+                                       response_significance_threshold=0.05,
+                                       stat_test_props=stat_test_props,
+                                       repetition_keys=['repeat'],
+                                       nMin_episodes=5,
+                                       multiple_comparison_correction=True,
+                                       loop_over_cells=False,
+                                       verbose=True)
     
     mean_vals = [float(np.ravel(v)[0]) if np.size(v) > 0 else np.nan for v in summary_data['value']]
 
@@ -418,13 +440,14 @@ def plot_responsiveness2_per_protocol(data_s, AX, idx, p, type='means'):
     pos_cond_s = []
     neg_cond_s = []
 
+    nROIs = []
+
     for data in data_s:
         ep = EpisodeData(data, protocol_name=p, quantities=['dFoF'])
         
         sig_list = []
         val_list = []
-        nROIs = []
-
+        
         for roi_n in range(data.nROIs):
 
             t0 = max([0, ep.time_duration[0]-1.5])
@@ -434,14 +457,21 @@ def plot_responsiveness2_per_protocol(data_s, AX, idx, p, type='means'):
                 test='ttest',
                 sign='both')
             
-            roi_summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-                                                       exclude_keys=list(ep.varied_parameters.keys()),
-                                                       response_significance_threshold=0.05,
-                                                       response_args=dict(roiIndex=roi_n))
+            roi_summary_data = pre_post_statistics(ep,
+                                                   episode_cond = ep.find_episode_cond(),
+                                                   response_args = dict(roiIndex=roi_n),
+                                                   response_significance_threshold=0.05,
+                                                   stat_test_props=stat_test_props,
+                                                   repetition_keys=list(ep.varied_parameters.keys()))
+
+            #ep.compute_summary_data(stat_test_props=stat_test_props,
+            #                                           exclude_keys=list(ep.varied_parameters.keys()),
+            #                                           response_significance_threshold=0.05,
+            #                                           response_args=dict(roiIndex=roi_n))
 
             sig_list.append(bool(roi_summary_data['significant'][0]))
             val_list.append(roi_summary_data['value'][0])
-            nROIs.append(data.nROIs)
+        nROIs.append(data.nROIs)
 
         sig_arr = np.array(sig_list)
         val_arr = np.array(val_list)
@@ -509,15 +539,19 @@ def plot_responsiveness2_of_protocol(data_s, AX, idx, p, type='means'):
     pos_cond_s = []
     neg_cond_s = []
 
+    nROIs = []
+
     for data in data_s:
         ep = EpisodeData(data, protocol_name=p, quantities=['dFoF'])
         
         sig_list = []
         val_list = []
-        nROIs = []
+        
+
+        print("data nROIS : ", data.nROIs)
 
         for roi_n in range(data.nROIs):
-
+    
             t0 = max([0, ep.time_duration[0]-1.5])
             stat_test_props = dict(
                 interval_pre=[-1.5,0],
@@ -525,14 +559,17 @@ def plot_responsiveness2_of_protocol(data_s, AX, idx, p, type='means'):
                 test='ttest',
                 sign='both')
             
-            roi_summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-                                                       exclude_keys=list(ep.varied_parameters.keys()),
-                                                       response_significance_threshold=0.05,
-                                                       response_args=dict(roiIndex=roi_n))
-
-            sig_list.append(bool(roi_summary_data['significant'][0]))
-            val_list.append(roi_summary_data['value'][0])
-            nROIs.append(data.nROIs)
+            roi_summary_data = pre_post_statistics(ep,
+                                                   episode_cond = ep.find_episode_cond(),
+                                                   response_args = dict(roiIndex=roi_n),
+                                                   response_significance_threshold=0.05,
+                                                   stat_test_props=stat_test_props,
+                                                   repetition_keys=list(ep.varied_parameters.keys()))
+            
+            sig_list.append(bool(roi_summary_data['significant']))
+            val_list.append(roi_summary_data['value'])
+        
+        nROIs.append(data.nROIs)
 
         sig_arr = np.array(sig_list)
         val_arr = np.array(val_list)
@@ -582,6 +619,9 @@ def plot_responsiveness2_of_protocol(data_s, AX, idx, p, type='means'):
                 (1, 0), ha='right', va='top', fontsize=6)
         pt.annotate(AX, 'Neg= %.1f %%' % (100 * final_neg),
                     (1, -0.2), ha='right', va='top', fontsize=6)
+    
+    else : 
+        print("Give a valid type between 'means' and 'ROI' .")
 
     print(final_pos, final_neg, final_ns)
     pt.pie(data=[final_pos, final_neg, final_ns],
@@ -605,12 +645,13 @@ def plot_barplot2_per_protocol(data_s, AX,idx,  p, subplots_n):
             test='ttest',
             sign='both')
 
-        summary_data = ep.compute_summary_data(
-            stat_test_props=stat_test_props,
-            exclude_keys=['repeat'],
-            response_significance_threshold=0.05,
-            response_args={})
-
+        summary_data = pre_post_statistics(ep,
+                                           episode_cond = ep.find_episode_cond(),
+                                           response_args = {},
+                                           response_significance_threshold=0.05,
+                                           stat_test_props=stat_test_props,
+                                           repetition_keys=['repeat'])
+        
         # Extract ROI mean values
         mean_vals = [float(np.ravel(v)[0]) if np.size(v) > 0 else np.nan for v in summary_data['value']]
 
@@ -653,12 +694,13 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
             test='ttest',
             sign='both')
 
-        summary_data = ep.compute_summary_data(
-            stat_test_props=stat_test_props,
-            exclude_keys=['repeat'],
-            response_significance_threshold=0.05,
-            response_args={})
-
+        summary_data = pre_post_statistics(ep,
+                                           episode_cond = ep.find_episode_cond(),
+                                           response_args = {},
+                                           response_significance_threshold=0.05,
+                                           stat_test_props=stat_test_props,
+                                           repetition_keys=['repeat'])
+        
         # Extract ROI mean values
         mean_vals = [float(np.ravel(v)[0]) if np.size(v) > 0 else np.nan for v in summary_data['value']]
 
@@ -746,7 +788,7 @@ def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
 ##################################################################################################################
 
 #%% LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_orientations')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_orientations_aligned')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -755,7 +797,6 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
                 'sliding_window': 300.,
                 'percentile': 10.,
                 'neuropil_correction_factor': 0.8}
-
 data_s = []
 for idx, filename in enumerate(SESSIONS['files']):
     data = Data(filename, verbose=False)
@@ -769,6 +810,8 @@ for idx, filename in enumerate(SESSIONS['files']):
 ## All individual files
 #%%
 generate_figures(data_s, cell_type='NDNF', subplots_n=16)
+#%%
+generate_figures([data_s[-1]], cell_type='NDNF', subplots_n=16)
 #%% [mardown]
 ## GROUPED ANALYSIS
 #%%
@@ -779,7 +822,7 @@ create_group_PDF(fig1, fig2, fig3, fig4, 'NDNF')
 ######################################## 2 ORIENTATIONS 8 contrasts ##############################################
 ##################################################################################################################
 #%% LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_contrasts')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_contrasts_aligned')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -800,9 +843,11 @@ for idx, filename in enumerate(SESSIONS['files']):
 
 #%% [markdown]
 ## All individual files
-
 #%%
 generate_figures(data_s, cell_type='NDNF', subplots_n=16)
+
+#%%
+generate_figures([data_s[-1]], cell_type='NDNF', subplots_n=16)
 #%% [mardown]
 ## GROUPED ANALYSIS
 #%%

@@ -7,12 +7,13 @@ import sys, os
 import numpy as np
 import matplotlib.pyplot as plt
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data
 from physion.utils import plot_tools as pt
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.analysis.episodes.build import EpisodeData
 
+sys.path += ['..']
 from General_summary.Generate_PDF_summary_opti import plot_responsiveness2_per_protocol, plot_responsiveness_per_protocol
 
 from collections import Counter, defaultdict
@@ -251,6 +252,12 @@ for idx, filename in enumerate(SESSIONS['files']):
     data.build_facemotion()
     data.build_pupil_diameter()
     data_s.append(data)
+
+#%%
+data = Data(SESSIONS['files'][0], verbose=False)
+data.metadata['protocol']
+
+protocol=str({k: protocol[k] for k in protocol if len(k) <66}) if data.metadata['protocol'] != 'None' else None
 
 #%%
 protocols = ["static-patch"]#, "drifting-gratings", "Natural-Images-4-repeats"]

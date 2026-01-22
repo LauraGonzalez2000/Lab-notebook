@@ -13,20 +13,22 @@
 # load packages:
 import numpy as np
 import sys
-sys.path += ['../../src'] # add src code directory for physion
+import os
+sys.path += ['../../physion/src'] # add src code directory for physion
 import physion.utils.plot_tools as pt
 from physion.intrinsic.tools import *
 from physion.intrinsic.analysis import RetinotopicMapping
 import matplotlib.pylab as plt
 from PIL import Image
+from physion.intrinsic import tools as intrinsic_analysis
 
 # %% [markdown]
 # ## Load data
 
 # %%
 dataFolder = os.path.join(os.path.expanduser('~'), 'DATA', 
-                        'In_Vivo_experiments', 'NDNF-Cre-batch2', 'Processed',
-                        'intrinsic_img','2025_12_09', '15-27-34')
+                        'In_Vivo_experiments', 'NDNF-Cre-batch3', 'Processed',
+                        'intrinsic_img','2026_01_16', '17-09-48')
 
 # vasculature picture
 imVasc = np.array(Image.open(os.path.join(dataFolder, 'vasculature.tif')))
@@ -45,16 +47,16 @@ maps = np.load(os.path.join(dataFolder, 'raw-maps.npy') ,
 #               allow_pickle=True))
 
 # %%
-plot_retinotopic_maps(maps, map_type='altitude');
+intrinsic_analysis.plot_retinotopic_maps(maps, map_type='altitude');
 
 # %%
-plot_retinotopic_maps(maps, map_type='azimuth');
+intrinsic_analysis.plot_retinotopic_maps(maps, map_type='azimuth');
 
 # %% [markdown]
 # # Perform Segmentation
 
 # %%
-data = build_trial_data(maps)
+data = intrinsic_analysis.build_trial_data(maps)
 data['vasculatureMap'] = imVasc[::int(imVasc.shape[0]/data['aziPosMap'].shape[0]),\
                                 ::int(imVasc.shape[1]/data['aziPosMap'].shape[1])]
 segmentation_params={'phaseMapFilterSigma': 1.5,
