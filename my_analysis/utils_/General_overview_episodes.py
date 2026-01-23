@@ -195,7 +195,7 @@ def plot_dFoF_per_protocol(data_s,
                                 color='k', alpha=0.3)
             AX[j][p].axvspan(1000, 1000+1000*episodes.time_duration[0], color='lightgrey', alpha=0.5, zorder=0)
 
-        AX[0][p].set_title(f'{protocol.replace('Natural-Images-4-repeats','natural-images')}')   
+        AX[0][p].set_title(protocol.replace('Natural-Images-4-repeats','natural-images'))   
         #AX[0][p].annotate(protocol.replace('Natural-Images-4-repeats','natural-images'),
         #                  (0.5,1.4),
         #                  xycoords='axes fraction', ha='center', fontsize=7)
@@ -466,7 +466,7 @@ def plot_dFoF_per_protocol2(data_s,
                                 color='k', alpha=0.3)
             AX[p].axvspan(1000, 1000+1000*episodes.time_duration[0], color='lightgrey', alpha=0.5, zorder=0)
 
-        AX[p].set_title(f'{protocol.replace('Natural-Images-4-repeats','natural-images')}')    
+        AX[p].set_title(protocol.replace('Natural-Images-4-repeats','natural-images'))    
         
         #AX[p].annotate(protocol.replace('Natural-Images-4-repeats','natural-images'),
         #                  (0.5,1.4),
@@ -600,7 +600,7 @@ def plot_dFoF_of_protocol2(data_s,
                             color='k', alpha=0.3)
         AX.axvspan(1000, 1000+1000*episodes.time_duration[0], color='lightgrey', alpha=0.5, zorder=0)
 
-    AX.set_title(f'{protocol.replace('Natural-Images-4-repeats','natural-images')}')    
+    AX.set_title(protocol.replace('Natural-Images-4-repeats','natural-images'))    
     
     #AX[p].annotate(protocol.replace('Natural-Images-4-repeats','natural-images'),
     #                  (0.5,1.4),
