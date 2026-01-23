@@ -98,8 +98,9 @@ def plot_evoked_pattern(EP_s,
         stim_idx = i % n_cond     
         column_lists[stim_idx].append(resp)
 
-    for j in range(12):
-        print(column_lists[0][j].shape,column_lists[1][j].shape,column_lists[2][j].shape,column_lists[3][j].shape )
+    if behavior_split:
+        for j in range(len(EP_s)):
+            print(column_lists[0][j].shape,column_lists[1][j].shape,column_lists[2][j].shape,column_lists[3][j].shape )
     
     varied_params = list(ep_s[0].varied_parameters.keys())[0]
     param_values = ep_s[0].varied_parameters[varied_params]
@@ -121,6 +122,8 @@ def plot_evoked_pattern(EP_s,
         stim_inset = pt.inset(axR[column], [0.1, 0.8, 0.8, 0.8])
         cond = ep.find_episode_cond(key=varied_params,value=param)
         iStim = np.flatnonzero(cond)[0]
+        print(cond)
+        print(iStim)
         image =  ep.visual_stim.get_image(iStim)
         image =  np.rot90(image, k=1)
         stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
@@ -187,7 +190,7 @@ def plot_evoked_pattern(EP_s,
 ##############################################################
 
 #LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt-test')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
@@ -229,8 +232,38 @@ for p, protocol in enumerate(protocols):
                         with_stim_inset=True, 
                         behavior_split=False)
     
-    plot_evoked_pattern(EP_s=ep_s, 
-                        quantity='dFoF', 
-                        with_stim_inset=True, 
-                        behavior_split=True)
+    #plot_evoked_pattern(EP_s=ep_s, 
+    #                    quantity='dFoF', 
+    #                    with_stim_inset=True, 
+    #                    behavior_split=True)
 
+
+#%%
+filename = SESSIONS['files'][0]
+data = Data(filename,verbose=False)
+data.build_dFoF(**dFoF_options, verbose=False)
+data.init_visual_stim() #initializes visual stim (7 protocols (experiments) per file)
+ep = EpisodeData(data, protocol_name=protocol, quantities=['rawFluo', 'dFoF', 'running_speed'])
+ep.init_visual_stim(data) 
+
+varied_params = list(ep.varied_parameters.keys())[0]
+param_values = ep.varied_parameters[varied_params]
+
+fig, axR = pt.figure(axes=(5,1),
+                         ax_scale=(1, 4),
+                         left=0.3,
+                         top=5,
+                         right=3)
+
+param = param_values[0]
+for column in range(5):
+    stim_inset = pt.inset(axR[column], [0.1, 0.8, 0.8, 0.8])
+    cond = ep.find_episode_cond(key=varied_params,value=param)
+    iStim = np.flatnonzero(cond)[0]
+    print(cond)
+    print(iStim)
+    image =  ep.visual_stim.get_image(iStim)
+    stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
+    #image =  np.rot90(image, k=1)
+    #stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
+    #stim_inset.axis('off')
