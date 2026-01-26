@@ -703,16 +703,42 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
                                            repetition_keys=['repeat'])
         
         # Extract ROI mean values
+        print("summary data value \n", summary_data['value'])
         mean_vals = [float(np.ravel(v)[0]) if np.size(v) > 0 else np.nan for v in summary_data['value']]
-
+     
         # Pad/truncate to 5 elements
         target_len = subplots_n
         mean_vals = (mean_vals + [np.nan] * target_len)[:target_len]
 
+        if p == 'ff-gratings-8orientation-2contrasts-15repeats':
+            #reorder mean_vals
+            mean_vals_ = np.zeros(16)
+            mean_vals_[0] = mean_vals[0]
+            mean_vals_[1] = mean_vals[2]
+            mean_vals_[2] = mean_vals[4]
+            mean_vals_[3] = mean_vals[6]
+            mean_vals_[4] = mean_vals[8]
+            mean_vals_[5] = mean_vals[10]
+            mean_vals_[6] = mean_vals[12]
+            mean_vals_[7] = mean_vals[14]
+
+            mean_vals_[8] = mean_vals[1]
+            mean_vals_[9] = mean_vals[3]
+            mean_vals_[10] = mean_vals[5]
+            mean_vals_[11] = mean_vals[7]
+            mean_vals_[12] = mean_vals[9]
+            mean_vals_[13] = mean_vals[11]
+            mean_vals_[14] = mean_vals[13]
+            mean_vals_[15] = mean_vals[15]
+
+            mean_vals = mean_vals_
+        
+        print("mean vals ", mean_vals)
+
         mean_vals_s.append(mean_vals)
 
 
-
+    print("len ! :", len(mean_vals_s[0]))
     ep0 = EpisodeData(data_s[0], protocol_name=p, quantities=['dFoF'])
 
     varied_keys = list(ep0.varied_parameters.keys())
@@ -720,9 +746,14 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
     contrasts = ep0.varied_parameters[varied_keys[1]]
 
     #param_values = [f"{a}°\n C={c}" for a in angles for c in contrasts]
-    param_values = [f"a={a:.1f}° , C={c:.1f}" for a in angles for c in contrasts]
+    if p == 'ff-gratings-8orientation-2contrasts-15repeats':
+        param_values = [f"a={a:.1f}° , C={c:.1f}" for c in contrasts for a in angles]
+
+    elif p == 'ff-gratings-2orientations-8contrasts-15repeats':
+        param_values = [f"a={a:.1f}° , C={c:.1f}" for a in angles for c in contrasts]
 
     # Compute session-aggregated mean and SEM
+    print("mean vals s", mean_vals_s)
     values = np.nanmean(mean_vals_s, axis=0)
     yerr = stats.sem(mean_vals_s, axis=0, nan_policy='omit')
 
@@ -798,7 +829,6 @@ def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
 ##################################################################################################################
 ######################################## 8 ORIENTATIONS 2 contrasts ##############################################
 ##################################################################################################################
-
 #%% LOAD DATA
 datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_orientations_aligned')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
@@ -809,23 +839,23 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
                 'sliding_window': 300.,
                 'percentile': 10.,
                 'neuropil_correction_factor': 0.8}
-data_s = []
+data_s_ori = []
 for idx, filename in enumerate(SESSIONS['files']):
     data = Data(filename, verbose=False)
     data.build_dFoF(**dFoF_options)
     data.build_running_speed()
     data.build_facemotion()
     data.build_pupil_diameter()
-    data_s.append(data)
+    data_s_ori.append(data)
 
 #%% [markdown]
 ## All individual files
 #%%
-generate_figures(data_s, cell_type='NDNF', subplots_n=16)
+#generate_figures(data_s, cell_type='NDNF', subplots_n=16)
 #%% [mardown]
 ## GROUPED ANALYSIS
-#%%
-fig1, fig2, fig3, fig4 = generate_figures_GROUP(data_s, subplots_n=16)
+#%% 8 ori 2 contrasts
+fig1, fig2, fig3, fig4 = generate_figures_GROUP(data_s_ori, subplots_n=16)
 create_group_PDF(fig1, fig2, fig3, fig4, 'NDNF')
 
 #%% ##############################################################################################################
@@ -842,21 +872,163 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
                 'percentile': 10.,
                 'neuropil_correction_factor': 0.8}
 
-data_s = []
+data_s_con = []
 for idx, filename in enumerate(SESSIONS['files']):
     data = Data(filename, verbose=False)
     data.build_dFoF(**dFoF_options)
     data.build_running_speed()
     data.build_facemotion()
     data.build_pupil_diameter()
-    data_s.append(data)
+    data_s_con.append(data)
 
 #%% [markdown]
 ## All individual files
 #%%
-generate_figures(data_s, cell_type='NDNF', subplots_n=16)
+#generate_figures(data_s, cell_type='NDNF', subplots_n=16)
 #%% [mardown]
 ## GROUPED ANALYSIS
 #%%
-fig1, fig2, fig3, fig4 = generate_figures_GROUP(data_s, subplots_n=16)
+fig1, fig2, fig3, fig4 = generate_figures_GROUP(data_s_con, subplots_n=16)
 create_group_PDF(fig1, fig2, fig3, fig4, 'NDNF')
+
+#%%
+def plot_responsiveness2_of_protocol_(data_s, AX, idx, p, type='means'):
+
+    nROIs = 0
+
+    sig_arrs_s = []
+    val_arrs_s = []
+
+    for data in data_s:
+        ep = EpisodeData(data, protocol_name=p, quantities=['dFoF'])
+        
+        sig_arrs = [[] for _ in range(8)]
+        val_arrs = [[] for _ in range(8)]
+
+        for roi_n in range(data.nROIs):
+    
+            t0 = max([0, ep.time_duration[0]-1.5])
+            stat_test_props = dict(
+                interval_pre=[-1.5,0],
+                interval_post=[t0, t0+1.5],
+                test='ttest',
+                sign='both')
+            
+            roi_summary_data = pre_post_statistics(ep,
+                                                   episode_cond = ep.find_episode_cond(),
+                                                   response_args = dict(roiIndex=roi_n),
+                                                   response_significance_threshold=0.05,
+                                                   stat_test_props=stat_test_props,
+                                                   repetition_keys=["repeat", "contrast"])
+            
+
+            #print(type(roi_summary_data['significant']))
+
+            #if isinstance(bool(roi_summary_data['significant']), np.ndarray):
+            for i in range(len(roi_summary_data['significant'])):
+                sig_arrs[i].append(bool(roi_summary_data['significant'][i]))
+                val_arrs[i].append(roi_summary_data['value'][i])
+
+            #else :
+            #    sig_arrs[0].append(bool(roi_summary_data['significant']))
+            #    val_arrs[0].append(roi_summary_data['value'])
+
+            
+        sig_arrs_s.append(sig_arrs)
+        val_arrs_s.append(val_arrs)
+
+        nROIs += data.nROIs
+    
+    print("here : ", len(sig_arrs_s), len(sig_arrs_s[1]))
+
+    #plot:
+    out = []
+    out_v = []
+    for c in range(len(sig_arrs_s[0])):
+        temp_ = []
+        temp_v_ = []
+        for f in range(len(data_s)):
+            temp = sig_arrs_s[f][c]
+            temp_v = val_arrs_s[f][c]
+            temp_.append(temp)
+            temp_v_.append(temp_v)
+
+        flat = [x for sub in temp_ for x in sub]
+        out.append(flat)
+
+        flat_v = [x for sub in temp_v_ for x in sub]
+        out_v.append(flat_v)
+
+
+
+    print(len(out))
+    #print(len(out_v), len(out_v[0]), len(out_v[1]))
+
+    final_pos_ = []
+    final_neg_ = []
+    final_ns_ = []
+
+    for c in range(len(out)):
+        data = out[c]
+        data_v = out_v[c]
+        print(len(data))
+        print(len(data_v))
+
+        resp_cond = data
+        pos_cond = [data[i] & (data_v[i] > 0) for i in range(len(data_v))]
+        neg_cond = [data[i] & (data_v[i] < 0) for i in range(len(data_v))]
+
+        resp_count = np.sum(resp_cond)
+        pos_count = np.sum(pos_cond)
+        neg_count = np.sum(neg_cond)
+
+        
+        print("len resp cond", len(resp_cond))
+        final_pos = (pos_count/len(resp_cond))*100
+        final_neg = (neg_count/len(resp_cond))*100
+        final_ns = ((nROIs - resp_count)/len(resp_cond))*100
+
+        print(final_neg, final_ns)
+
+        final_pos_.append(final_pos)
+        final_neg_.append(final_neg)
+        final_ns_.append(final_ns)
+
+        ax = AX[c] if isinstance(AX, (list, tuple)) or hasattr(AX, "__len__") else AX
+
+        pt.pie(data=[final_pos, final_neg, final_ns],
+            ax=ax,
+            COLORS=['green', 'red', 'grey'])
+
+    
+    return final_pos_, final_neg_, final_ns_
+
+def plot_(x, final_pos_, final_neg_, final_ns_):
+    fig, AX = pt.figure(axes = (1,1),figsize=(2,2), ax_scale=(2, 5))
+    
+    pt.plot(x, final_pos_, ax=AX, color = "green")
+    pt.set_plot(ax = AX, 
+                ylabel='Responsiveness (%)', 
+                yticks=np.arange(0, 105, 10),
+                xlabel='contrast', 
+                fontsize = 15)
+    AX.set_xticks(x)
+    AX.set_xticklabels([f'{xi:.2f}' for xi in x], rotation=90, ha="right")
+    AX.set_ylim(0, 100)
+  
+    pt.plot(x, final_neg_, ax=AX, color="red")
+    pt.plot(x, final_ns_, ax=AX, color = "grey")
+  
+    return 0
+
+#%%
+subplots = 8
+fig5, AX5 = pt.figure(axes = (subplots,1),figsize=(1.4,8) )
+final_pos_, final_neg_, final_ns_ = plot_responsiveness2_of_protocol_(data_s_ori, AX5, idx, data_s_ori[0].protocols[0], type='ROI')
+#%%
+ep = EpisodeData(data_s_ori[0], protocol_name=data.protocols[0], quantities=['dFoF'])
+x = ep.varied_parameters['angle']
+print(final_pos_)
+print(final_neg_)
+print(final_ns_)
+plot_(x, final_pos_, final_neg_, final_ns_)

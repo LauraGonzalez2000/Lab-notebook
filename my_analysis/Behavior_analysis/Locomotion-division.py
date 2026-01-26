@@ -1,10 +1,14 @@
 # %% [markdown]
 # # Locomotion analysis
 
+# running speed vs pupil size 
+# plot locomotion on episode -> play with condition
+# running speed vs pupil size (per file - plot with all files)
+
 # %%
 # load packages:
 import os, sys
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.utils  import plot_tools as pt
 from physion.analysis.episodes.build import EpisodeData
@@ -208,12 +212,12 @@ def plot_locomotion(data,
     return fig, AX
 
 #%%
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
 #%%
-#manual parameters!
+#manual parameters
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
                  'method_for_F0' : 'sliding_percentile', # either 'minimum', 'percentile', 'sliding_minimum', or 'sliding_percentile'
                  'sliding_window' : 300. , # seconds (used only if METHOD= 'sliding_minimum' | 'sliding_percentile')
@@ -297,5 +301,4 @@ for i in range(rows*cols-len(SESSIONS['files'])):
 
 fig.savefig("C:/Users/laura.gonzalez/Output_expe/In_Vivo/NDNF/Behavior/all_behavior_locomotion_pupil2.png", dpi=300, bbox_inches='tight')
 
-#%%
 

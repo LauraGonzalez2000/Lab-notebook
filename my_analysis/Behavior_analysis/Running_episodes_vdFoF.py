@@ -1,5 +1,6 @@
 # %% [markdown]
 # # Running - Study Variation of dFoF
+# vdFoF in rest and active
 
 # %% [markdown]
 ### Load packages and define constants:
@@ -8,10 +9,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.analysis.episodes.build import EpisodeData
+from physion.analysis.episodes.trial_statistics import pre_post_statistics
 
+sys.path += ['../']
 from utils_.General_overview_episodes import compute_high_arousal_cond
 import utils_.my_math as my_math
 
@@ -272,13 +275,17 @@ def calc_responsiveness(ep, nROIs):
                                 interval_post=[t0, t0+1.5],                                   
                                 test='ttest', 
                                 sign='both')
-        roi_summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-                                                   #exclude_keys=['repeat'],
-                                                   exclude_keys= list(ep.varied_parameters.keys()), # we merge different stimulus properties as repetitions of the stim. type  
-                                                   response_significance_threshold=0.05,
-                                                   response_args=dict(roiIndex=roi_n))
-        session_summary['significant'].append(bool(roi_summary_data['significant'][0]))
-        session_summary['value'].append(roi_summary_data['value'][0])
+
+        roi_summary_data = pre_post_statistics(ep,
+                                               episode_cond = ep.find_episode_cond(),
+                                               response_args = dict(roiIndex=roi_n),
+                                               response_significance_threshold=0.05,
+                                               stat_test_props=stat_test_props,
+                                               repetition_keys=list(ep.varied_parameters.keys()))
+        
+
+        session_summary['significant'].append(bool(roi_summary_data['significant']))
+        session_summary['value'].append(roi_summary_data['value'])
   
     resp_cond = np.array(session_summary['significant'])                  
     pos_cond = resp_cond & ([session_summary['value'][i]>0 for i in range(len(session_summary['value']))])
@@ -319,7 +326,7 @@ def get_diffs_baseline(traces_act_s, traces_rest_s):
 ###################################################################################################################
 #%% Load Data
 
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -466,10 +473,10 @@ AX[1].set_ylim([-4,10])
 ###################### REST AND ACTIVE #############################
 ####################################################################
 #protocol = "Natural-Images-4-repeats"
-#protocol = "drifting-gratings"
+protocol = "drifting-gratings"
 #protocol = 'moving-dots' 
 #protocol = 'random-dots'
-protocol = "static-patch"
+#protocol = "static-patch"
 #protocol = "looming-stim"
 
 traces_act_s, traces_rest_s, diffs_act_s, diffs_rest_s = [], [], [], []
@@ -542,8 +549,9 @@ for index in range(len(SESSIONS['files'])):
 
 
 
-#%% ################################################################
-# ALL CELLS ########################################################
+#%% ALL CELLS 
+####################################################################
+####################################################################
 ####################################################################
 temp_act = [np.nanmean(traces_act_s[i], axis=0 ) for i in range(len(traces_act_s))]
 flattened_act = [row for arr in temp_act for row in arr]
@@ -571,9 +579,6 @@ boxplot_dict = {"title": "Difference baselines Act vs Rest",
 
 plot_boxplot(boxplot_dict)
 
-#%% ################################################################
-# RESPONSIVE CELLS #################################################
-####################################################################
 #%% ALL RESPONSIVE CELLS
 temp_act_resp = [np.nanmean(traces_act_resp_s[i], axis=0 ) for i in range(len(traces_act_resp_s))]
 temp_act_resp = [arr for arr in temp_act_resp if not np.isnan(arr).any()]

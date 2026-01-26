@@ -1,5 +1,6 @@
 # %% [markdown]
 # # Running overview 
+# plot dFoF in running and resting states - for the different protocols and subprotocols
 
 # %% [markdown]
 ### Load packages and define constants:
@@ -320,7 +321,7 @@ def plot_average_visually_evoked_activity(data_s,
 #running overview necessary to filter good files. 
 #%% Load Data
 #datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch1','NWBs_run')
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 
 #%%

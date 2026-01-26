@@ -20,9 +20,8 @@ from scipy.spatial.distance import pdist
 pt.set_style('manuscript')
 
 from scipy.cluster.hierarchy import optimal_leaf_ordering
-#%%  FUNCTIONS
 from matplotlib.transforms import blended_transform_factory
-
+#%%  FUNCTIONS
 def plot_evoked_pattern(EP_s,  
                         pattern_cond = [], 
                         quantity='rawFluo',
@@ -130,7 +129,7 @@ def plot_evoked_pattern(EP_s,
         image =  np.rot90(image, k=1)
         stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
         stim_inset.axis('off')
-
+        
         # RASTER ######################################################################
         # mean response for raster
         resp_ = column_lists[column]
@@ -186,7 +185,7 @@ def plot_evoked_pattern(EP_s,
 
         time_max = ep_s[0].time_duration[0] + 1 #assumaes prestim 1
         pt.set_plot(axR[column], 
-                    spines = [ 'bottom'],
+                    spines = ['bottom'],
                     yticks=[0, len(combined)],
                     ylabel='ROI',
                     xticks=np.arange(-1, time_max+1, 1), 
@@ -207,16 +206,6 @@ def plot_evoked_pattern(EP_s,
                       orientation='vertical', 
                       fontsize=15)
         
-        '''
-        axR[column].fill_between([0, ep_s[0].time_duration[0]],        
-                                 y1 = 90, 
-                                 y2 = 92,     
-                                 color='k',     
-                                 alpha=0.6,
-                                 linewidth=0.1, 
-                                 clip_on=False)
-        '''
-        
         trans = blended_transform_factory(axR[column].transData, axR[column].transAxes)
 
         axR[column].fill_between([0, ep_s[0].time_duration[0]],  # x in seconds (data coords)
@@ -233,9 +222,9 @@ def plot_evoked_pattern(EP_s,
                              fontsize=15,
                              xycoords="axes fraction",
                              clip_on=False)
+        
 
     return fig
-
 
 #%%
 #LOAD DATA
@@ -276,109 +265,107 @@ for protocol in protocols:
 ########################################################################
 for p, protocol in enumerate(protocols):
     ep_s = ep_s_[p]
-<<<<<<< HEAD
-    #plot_evoked_pattern(EP_s=ep_s, 
-    #                    quantity='dFoF', 
-    #                    with_stim_inset=True, 
-    #                    behavior_split=False)
-=======
     plot_evoked_pattern(EP_s=ep_s, 
                         quantity='dFoF', 
                         with_stim_inset=True, 
                         behavior_split=False)
->>>>>>> 75dbd74f60a81e600c6160b35af32fcf97e539b5
     
     plot_evoked_pattern(EP_s=ep_s, 
                         quantity='dFoF', 
                         with_stim_inset=True, 
                         behavior_split=True)
 
+#%%
 
-#%% FOR DEBUG NATURAL IMAGE ########################################
-filename = SESSIONS['files'][0]
-data = Data(filename,verbose=False)
-data.build_dFoF(**dFoF_options, verbose=False)
-data.init_visual_stim() #initializes visual stim (7 protocols (experiments) per file)
-ep = EpisodeData(data, protocol_name=protocol, quantities=['rawFluo', 'dFoF', 'running_speed'])
-ep.init_visual_stim(data) 
+def plot_evoked_pattern(EP_s,  
+                        pattern_cond = [], 
+                        quantity='rawFluo',
+                        rois=None,
+                        with_stim_inset=True,
+                        with_mean_trace=False,
+                        factor_for_traces=2,
+                        raster_norm='full',
+                        Tbar=1,
+                        min_dFof_range=4,
+                        ax_scale=(1.3,.3), 
+                        axR=None, 
+                        axT=None, 
+                        behavior_split=False):
 
-varied_params = list(ep.varied_parameters.keys())[0]
-param_values = ep.varied_parameters[varied_params]
 
-fig, axR = pt.figure(axes=(5,1),
-                         ax_scale=(1, 4),
+    ####### initialize figure
+    fig, axR = pt.figure(axes=(16,1),
+                         ax_scale=(2, 11),
+                         right=4,
                          left=0.3,
-                         top=5,
-                         right=3)
-
-resp = np.array(getattr(ep, 'rawFluo'))
-print(resp.shape)
-column_lists = [[] for _ in range(5)] # column[i] will store the responses of this specific stimuli with behavioral condition if needed
-
-Patterncond_s = []
-for stim_id in range(5):
-    pattern_cond = np.array([ep.index[i] == stim_id for i in range(len(ep.index))])
-    Patterncond_s.append(pattern_cond)
-
-for stim_id in range(5):
-    pattern_cond = Patterncond_s[stim_id]
-    print(len(pattern_cond))
-    temp = resp[pattern_cond,:,:]
-    column_lists[stim_id].append(temp)
-
-param = param_values[0]
-for column in range(5):
-    stim_inset = pt.inset(axR[column], [0.1, 0.8, 0.8, 0.8])
-    cond = ep.find_episode_cond(key=varied_params,value=param)
-    iStim = np.flatnonzero(cond)[0]
-    print(cond)
-    print(iStim)
-    image =  ep.visual_stim.get_image(iStim)
-    stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
-    #image =  np.rot90(image, k=1)
-    #stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
-    #stim_inset.axis('off')
-    # RASTER ######################################################################
-    # mean response for raster
-    resp_ = column_lists[column]
-    mean_resp_s = []
-    for r in resp_:
-        if r is None or r.shape[0] == 0: #no trials for this file
-            mean_resp_s.append(np.full((r.shape[1], r.shape[2]), np.nan)) #or...not plot invalid rois for the other state
-        else:
-            mean_resp = np.nanmean(r, axis=0) #mean over trials!
-            mean_resp_s.append(mean_resp)
-
-    combined = np.concatenate(mean_resp_s, axis=0)
-    #norm full
-    combined = (combined-combined.min(axis=1).reshape(len(combined),1))
+                         top=(4.5 if with_stim_inset else 1))
     
+    varied_params1 = list(ep_s[0].varied_parameters.keys())[0]
+    param_values1 = ep_s[0].varied_parameters[varied_params1]
 
-    #reorder neurons by similarity (but keep same order between act and rest)
-    valid = np.isfinite(combined).all(axis=1) & (np.nanstd(combined, axis=1) > 0)
-    dist = pdist(combined[valid], metric='correlation')
-    Z = linkage(dist, method='average')
-    
-    order = leaves_list(Z)
-    combined = combined[order, :]
-    order_mantained = order
-    
-    # Plot raster
-    axR[column].imshow(combined,
-                        cmap = pt.plt.cm.plasma, #cmap=pt.binary,
-                        aspect='auto', interpolation='none',
-                        vmin=0, vmax=2,
-                        extent=(ep_s[0].t[0], ep_s[0].t[-1], 0, combined.shape[0]))
+    varied_params2 = list(ep_s[0].varied_parameters.keys())[1]
+    param_values2 = ep_s[0].varied_parameters[varied_params2]
 
-    pt.set_plot(axR[column], [], xlim=[ep_s[0].t[0], ep_s[0].t[-1]])
-    
-    pt.bar_legend(axR[column], 
-                    colorbar_inset=dict(rect=[1.1,.1,.04,.8], facecolor=None),
-                    colormap = pt.plt.cm.plasma, #colormap=pt.binary,
-                    bar_legend_args={},
-                    label='normalized $\\Delta$F/F',
-                    bounds=None,
-                    ticks = None,
-                    ticks_labels=None,
-                    no_ticks=False,
-                    orientation='vertical')
+    print("jj", param_values1)
+    print("jkjk", param_values2)
+
+    i=0
+    for param2 in param_values2:
+        for param1 in param_values1:
+            print(param1, param2)
+            stim_inset = pt.inset(axR[i], [0.1, 0.8, 0.8, 0.8])
+            cond_a = ep.find_episode_cond(key="angle",value=param1)
+            cond_c = ep.find_episode_cond(key="contrast",value=param2)
+            #print(cond_a)
+            #print(cond_c)
+            iStim = np.flatnonzero(cond_a & cond_c)[0]
+            image =  ep.visual_stim.get_image(iStim)
+            image =  np.rot90(image, k=1)
+            stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
+            stim_inset.axis('off')
+            i+=1
+
+    return fig
+#%%
+#LOAD DATA
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
+SESSIONS = scan_folder_for_NWBfiles(datafolder)
+SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
+dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
+                 'method_for_F0' : 'sliding_percentile', # either 'minimum', 'percentile', 'sliding_minimum', or 'sliding_percentile'
+                 'sliding_window' : 300. , # seconds (used only if METHOD= 'sliding_minimum' | 'sliding_percentile')
+                 'percentile' : 10. , # for baseline (used only if METHOD= 'percentile' | 'sliding_percentile')
+                 'neuropil_correction_factor' : 0.8 }# fraction of neuropil substracted to fluorescence
+
+data_s = []
+for index in range(len(SESSIONS['files'])):
+    filename = SESSIONS['files'][index]
+    data = Data(filename,verbose=False)
+    data.build_dFoF(**dFoF_options, verbose=False)
+    data.init_visual_stim() #initializes visual stim (7 protocols (experiments) per file)
+    data_s.append(data)
+
+#%%
+protocols = ['random-dots']
+#protocols = ["Natural-Images-4-repeats"]
+
+ep_s_ = []
+for protocol in protocols: 
+    ep_s = []
+    for i, data in enumerate(data_s): 
+        print("File ", i)
+        ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed', 'rawFluo'])
+        ep.init_visual_stim(data) 
+        ep_s.append(ep)
+    ep_s_.append(ep_s)
+
+#%% 
+########################################################################
+##################### RESULTS PER PROTOCOL #############################
+########################################################################
+for p, protocol in enumerate(protocols):
+    ep_s = ep_s_[p]
+    plot_evoked_pattern(EP_s=ep_s, 
+                        quantity='dFoF', 
+                        with_stim_inset=True, 
+                        behavior_split=False)
