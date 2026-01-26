@@ -339,14 +339,14 @@ def plot_dFoF_of_protocol(data_s,
         AX[1][0].set_ylabel("a = 90")
         # Label columns
         for c_idx, contrast in enumerate(contrasts):
-            AX[1][c_idx].set_xlabel(f"{contrast:.2f}")
-    elif data.protocols[0]=="ff-gratings-8orientations-2contrasts-15repeats":
+            AX[1][c_idx].set_xlabel(f"c = {contrast:.2f}")
+    elif data.protocols[0]=="ff-gratings-8orientation-2contrasts-15repeats":
         #label rows
         AX[0][0].set_ylabel("C = 0.5")
         AX[1][0].set_ylabel("C = 1")
         # Label columns
         for o_idx, orientation in enumerate(orientations):
-            AX[1][o_idx].set_xlabel(f"{orientation:.0f}°")
+            AX[1][o_idx].set_xlabel(f"a = {orientation:.0f}°")
 
 
     # annotate session or ROI info

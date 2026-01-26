@@ -108,12 +108,13 @@ def find_available_settings(data, debug=False):
     return settings
 
 def figure_to_array(fig):
-    """Convert a matplotlib Figure to a NumPy array"""
     canvas = FigureCanvas(fig)
     canvas.draw()
-    buf = canvas.tostring_rgb()
-    ncols, nrows = fig.canvas.get_width_height()
-    fig_arr = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 3)
+
+    buf = np.asarray(canvas.buffer_rgba())
+    # drop alpha channel → RGB
+    fig_arr = buf[:, :, :3].copy()
+
     return fig_arr
 
 def calc_responsiveness(ep, nROIs):
@@ -710,23 +711,36 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
 
         mean_vals_s.append(mean_vals)
 
+
+
+    ep0 = EpisodeData(data_s[0], protocol_name=p, quantities=['dFoF'])
+
+    varied_keys = list(ep0.varied_parameters.keys())
+    angles = ep0.varied_parameters[varied_keys[0]]
+    contrasts = ep0.varied_parameters[varied_keys[1]]
+
+    #param_values = [f"{a}°\n C={c}" for a in angles for c in contrasts]
+    param_values = [f"a={a:.1f}° , C={c:.1f}" for a in angles for c in contrasts]
+
     # Compute session-aggregated mean and SEM
     values = np.nanmean(mean_vals_s, axis=0)
     yerr = stats.sem(mean_vals_s, axis=0, nan_policy='omit')
 
     # Plot directly
     x = np.arange(len(values))
-    AX.bar(
-        x, values, yerr=yerr,
-        alpha=0.8, capsize=0,
-        error_kw=dict(linewidth=0.6)
-    )
+    AX.bar(x, values, 
+           yerr=yerr,
+           alpha=0.8, 
+           capsize=0,
+           error_kw=dict(linewidth=0.6))
     AX.set_xticks(x)
-    AX.set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}")
+    AX.set_xticklabels(param_values,rotation=90, ha="right")
+
+    AX.set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
     AX.axhline(0, color='black', linewidth=0.8)
     
     if idx==0:
-        AX.set_ylabel('variation dFoF')
+        AX.set_ylabel('variation \ndFoF')
     
     return 0
 
@@ -740,7 +754,7 @@ def generate_figures_GROUP(data_s, subplots_n):
     elapsed = time.time() - start_time
     print(f"Fig 1 ok: {elapsed:.2f} seconds")
 
-    fig2, AX2  = pt.figure(axes = (len(protocols),1))
+    fig2, AX2  = pt.figure(axes = (len(protocols),1), ax_scale=(2, 1))
     fig3, AX3  = pt.figure(axes = (len(protocols),1))
     fig4, AX4 = pt.figure(axes = (len(protocols),1))
    
@@ -781,8 +795,6 @@ def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
 ##################################################################################################################
 #%% [markdown]
 # ## NDNF CRE BATCH 2
-
-#%%
 ##################################################################################################################
 ######################################## 8 ORIENTATIONS 2 contrasts ##############################################
 ##################################################################################################################
@@ -810,8 +822,6 @@ for idx, filename in enumerate(SESSIONS['files']):
 ## All individual files
 #%%
 generate_figures(data_s, cell_type='NDNF', subplots_n=16)
-#%%
-generate_figures([data_s[-1]], cell_type='NDNF', subplots_n=16)
 #%% [mardown]
 ## GROUPED ANALYSIS
 #%%
@@ -845,9 +855,6 @@ for idx, filename in enumerate(SESSIONS['files']):
 ## All individual files
 #%%
 generate_figures(data_s, cell_type='NDNF', subplots_n=16)
-
-#%%
-generate_figures([data_s[-1]], cell_type='NDNF', subplots_n=16)
 #%% [mardown]
 ## GROUPED ANALYSIS
 #%%

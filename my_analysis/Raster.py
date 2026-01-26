@@ -257,8 +257,8 @@ for index in range(len(SESSIONS['files'])):
     data_s.append(data)
 
 #%%
-#protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
-protocols = ["Natural-Images-4-repeats"]
+protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
+#protocols = ["Natural-Images-4-repeats"]
 
 ep_s_ = []
 for protocol in protocols: 
@@ -276,10 +276,17 @@ for protocol in protocols:
 ########################################################################
 for p, protocol in enumerate(protocols):
     ep_s = ep_s_[p]
+<<<<<<< HEAD
     #plot_evoked_pattern(EP_s=ep_s, 
     #                    quantity='dFoF', 
     #                    with_stim_inset=True, 
     #                    behavior_split=False)
+=======
+    plot_evoked_pattern(EP_s=ep_s, 
+                        quantity='dFoF', 
+                        with_stim_inset=True, 
+                        behavior_split=False)
+>>>>>>> 75dbd74f60a81e600c6160b35af32fcf97e539b5
     
     plot_evoked_pattern(EP_s=ep_s, 
                         quantity='dFoF', 
@@ -287,7 +294,7 @@ for p, protocol in enumerate(protocols):
                         behavior_split=True)
 
 
-#%%
+#%% FOR DEBUG NATURAL IMAGE ########################################
 filename = SESSIONS['files'][0]
 data = Data(filename,verbose=False)
 data.build_dFoF(**dFoF_options, verbose=False)
