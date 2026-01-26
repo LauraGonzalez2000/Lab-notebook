@@ -141,9 +141,9 @@ def calc_responsiveness(ep, nROIs):
     pos_cond = resp_cond & ([session_summary['value'][i]>0 for i in range(len(session_summary['value']))])
     neg_cond = resp_cond & ([session_summary['value'][i]<0 for i in range(len(session_summary['value']))])
 
-    print(f'{sum(resp_cond)} significant ROI ({np.sum(pos_cond)} positive, {np.sum(neg_cond)} negative) out of {len(session_summary['significant'])} ROIs')
+    print(f"{sum(resp_cond)} significant ROI \n ({np.sum(pos_cond)} positive, {np.sum(neg_cond)} negative) \n out of {len(session_summary['significant'])} ROIs")
 
-    resp_cond, pos_cond, neg_cond
+    return resp_cond, pos_cond, neg_cond
 
 def compute_responsiveness(ep, nROIs, alpha=0.05, window=1.5):
     session_summary = {'significant': [], 'value': []}
@@ -315,7 +315,7 @@ def plot_protocol_ddFoF(ep, AX, idx, protocol="", subplots_n=16):
     x = np.arange(target_len) #generalize
     ax.bar(x, mean_vals, alpha=0.8, capsize=4)
     ax.set_xticks(x)
-    ax.set_title(f'{protocol.replace('Natural-Images-4-repeats','natural-images')}')
+    ax.set_title(f"{protocol.replace('Natural-Images-4-repeats','natural-images')}")
     ax.axhline(0, color='black', linewidth=0.8)
 
     if idx==0:
@@ -415,7 +415,7 @@ def create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, 
         pdf3.fill_PDF3(fig6, fig7, fig8, fig9)
         fig_p3 = pdf3.fig
 
-        output_path = f'C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/{os.path.splitext(dict_annotation['name'])[0]}_summary.pdf'
+        output_path = f"C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/{os.path.splitext(dict_annotation['name'])[0]}_summary.pdf"
 
         with PdfPages(output_path) as pdf:
                 pdf.savefig(fig_p1, dpi=300, bbox_inches="tight")  # Page 1
@@ -527,7 +527,7 @@ def plot_responsiveness2_per_protocol(data_s, AX, idx, p, type='means'):
         ax=AX[idx],
         COLORS=['green', 'red', 'grey'])
 
-    AX[idx].set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
+    AX[idx].set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}")
     
     return 0
 
@@ -628,7 +628,7 @@ def plot_responsiveness2_of_protocol(data_s, AX, idx, p, type='means'):
         ax=AX,
         COLORS=['green', 'red', 'grey'])
 
-    AX.set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
+    AX.set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}")
     
     return 0
 
@@ -673,7 +673,7 @@ def plot_barplot2_per_protocol(data_s, AX,idx,  p, subplots_n):
         error_kw=dict(linewidth=0.6)
     )
     AX[idx].set_xticks(x)
-    AX[idx].set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
+    AX[idx].set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}")
     AX[idx].axhline(0, color='black', linewidth=0.8)
     
     if idx==0:
@@ -722,7 +722,7 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
         error_kw=dict(linewidth=0.6)
     )
     AX.set_xticks(x)
-    AX.set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
+    AX.set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}")
     AX.axhline(0, color='black', linewidth=0.8)
     
     if idx==0:
@@ -766,7 +766,7 @@ def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
         pdf1 = PDF_angle_contrast()
         pdf1.fill_PDF(fig1, fig2, fig3, fig4)
         fig_p1 = pdf1.fig
-        output_path = f'C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/GROUP_summary.pdf'
+        output_path = f"C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/GROUP_summary.pdf"
         with PdfPages(output_path) as pdf:
                 pdf.savefig(fig_p1, dpi=300, bbox_inches="tight")  # Page 1
 

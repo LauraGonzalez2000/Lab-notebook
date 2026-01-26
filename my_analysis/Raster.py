@@ -18,7 +18,11 @@ from scipy.cluster.hierarchy import linkage, leaves_list
 from scipy.spatial.distance import pdist
 
 pt.set_style('manuscript')
+
+from scipy.cluster.hierarchy import optimal_leaf_ordering
 #%%  FUNCTIONS
+from matplotlib.transforms import blended_transform_factory
+
 def plot_evoked_pattern(EP_s,  
                         pattern_cond = [], 
                         quantity='rawFluo',
@@ -61,10 +65,10 @@ def plot_evoked_pattern(EP_s,
 
     ####### initialize figure
     fig, axR = pt.figure(axes=(n_cond,1),
-                         ax_scale=(1, 4),
+                         ax_scale=(2, 11),
+                         right=4,
                          left=0.3,
-                         top=(5 if with_stim_inset else 1),
-                         right=3)
+                         top=(4.5 if with_stim_inset else 1))
     
     resp_s = []
     for file_i in range(len(EP_s)):  #for each file
@@ -98,9 +102,9 @@ def plot_evoked_pattern(EP_s,
         stim_idx = i % n_cond     
         column_lists[stim_idx].append(resp)
 
-    if behavior_split:
-        for j in range(len(EP_s)):
-            print(column_lists[0][j].shape,column_lists[1][j].shape,column_lists[2][j].shape,column_lists[3][j].shape )
+    #if behavior_split:
+    #    for j in range(len(EP_s)):
+    #        print(column_lists[0][j].shape,column_lists[1][j].shape,column_lists[2][j].shape,column_lists[3][j].shape )
     
     varied_params = list(ep_s[0].varied_parameters.keys())[0]
     param_values = ep_s[0].varied_parameters[varied_params]
@@ -109,12 +113,12 @@ def plot_evoked_pattern(EP_s,
     for column in range(n_cond):
         if behavior_split==False:
             stim_idx = column
-            axR[column].set_title(f"STIM {stim_idx+1}", y=1.3)
+            axR[column].set_title(f"STIM {stim_idx+1}", y=1.3, fontsize=15)
 
         elif behavior_split==True:
             stim_idx = column // 2
             state = "ACT" if column % 2 == 0 else "REST"
-            axR[column].set_title(f"STIM {stim_idx+1} {state}", y=1.3)
+            axR[column].set_title(f"STIM {stim_idx+1} {state}", y=1.3, fontsize=15)
         
         print(" Column : ", column, "stim idx", stim_idx) 
         # STIM INSET ##################################################################
@@ -122,8 +126,6 @@ def plot_evoked_pattern(EP_s,
         stim_inset = pt.inset(axR[column], [0.1, 0.8, 0.8, 0.8])
         cond = ep.find_episode_cond(key=varied_params,value=param)
         iStim = np.flatnonzero(cond)[0]
-        print(cond)
-        print(iStim)
         image =  ep.visual_stim.get_image(iStim)
         image =  np.rot90(image, k=1)
         stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
@@ -142,20 +144,28 @@ def plot_evoked_pattern(EP_s,
 
         combined = np.concatenate(mean_resp_s, axis=0)
 
-        if raster_norm=='full':
-            combined = (combined-combined.min(axis=1).reshape(len(combined),1))
+        #normalization : 
+        if raster_norm == 'full': #shift to have only positive values
+            combined_min = combined.min(axis=1).reshape(len(combined),1)
+            combined = combined-combined_min
         else:
             pass
-
+     
         #reorder neurons by similarity (but keep same order between act and rest)
         valid = np.isfinite(combined).all(axis=1) & (np.nanstd(combined, axis=1) > 0)
         dist = pdist(combined[valid], metric='correlation')
-        Z = linkage(dist, method='average')
+        Z = linkage(dist, method="weighted") #average #complete
+        Zopt = optimal_leaf_ordering(Z, dist)
+
+        #if column==0:
+        #    order = leaves_list(Zopt)
+        #    order_mantained = order
+        #combined = combined[order_mantained, :]
         
         if not behavior_split: 
-            order = leaves_list(Z)
+            order = leaves_list(Zopt)
         if behavior_split and state == "ACT":
-            order = leaves_list(Z)
+            order = leaves_list(Zopt)
         elif behavior_split and state== "REST":
             order = order_mantained #not recalculated, taking the previous one (ACT of the same stim)
 
@@ -163,34 +173,73 @@ def plot_evoked_pattern(EP_s,
         order_mantained = order
         
         # Plot raster
+        #print(combined)
+        #print(combined.max(axis=1).reshape(len(combined),1))
+        vmin = 0
+        vmax = 2
         axR[column].imshow(combined,
-                             cmap=pt.binary,
-                             aspect='auto', interpolation='none',
-                             vmin=0, vmax=2,
-                             extent=(ep_s[0].t[0], ep_s[0].t[-1], 0, combined.shape[0]))
+                           cmap = pt.plt.cm.plasma, #cmap=pt.binary,
+                           aspect='auto', 
+                           interpolation='none',
+                           vmin=vmin, vmax=vmax,
+                           extent=(ep_s[0].t[0], ep_s[0].t[-1], 0, combined.shape[0]))
 
-        pt.set_plot(axR[column], [], xlim=[ep_s[0].t[0], ep_s[0].t[-1]])
+        time_max = ep_s[0].time_duration[0] + 1 #assumaes prestim 1
+        pt.set_plot(axR[column], 
+                    spines = [ 'bottom'],
+                    yticks=[0, len(combined)],
+                    ylabel='ROI',
+                    xticks=np.arange(-1, time_max+1, 1), 
+                    xlabel='Time (s)',
+                    xlim=[ep_s[0].t[0], ep_s[0].t[-1]], 
+                    fontsize=15)
        
         pt.bar_legend(axR[column], 
                       colorbar_inset=dict(rect=[1.1,.1,.04,.8], facecolor=None),
-                      colormap=pt.binary,
-                      bar_legend_args={},
-                      label='n. $\\Delta$F/F',
-                      bounds=None,
+                      colormap = pt.plt.cm.plasma, #colormap=pt.binary,
+                      bar_legend_args={'size':1},
+                      label='normalized $\\Delta$F/F',
+                      X=np.arange(vmin, vmax+0.5, 0.5),
+                      bounds=[vmin, vmax],
                       ticks = None,
                       ticks_labels=None,
                       no_ticks=False,
-                      orientation='vertical')
+                      orientation='vertical', 
+                      fontsize=15)
+        
+        '''
+        axR[column].fill_between([0, ep_s[0].time_duration[0]],        
+                                 y1 = 90, 
+                                 y2 = 92,     
+                                 color='k',     
+                                 alpha=0.6,
+                                 linewidth=0.1, 
+                                 clip_on=False)
+        '''
+        
+        trans = blended_transform_factory(axR[column].transData, axR[column].transAxes)
+
+        axR[column].fill_between([0, ep_s[0].time_duration[0]],  # x in seconds (data coords)
+                                 1.02, 1.06,                    # y in axes coords (above top)
+                                 transform=trans,
+                                 color="k",
+                                 alpha=0.6,
+                                 linewidth=0,
+                                 clip_on=False)
+
+        
+        axR[column].annotate(f"{len(combined)}", 
+                             xy=(-0.25,0), 
+                             fontsize=15,
+                             xycoords="axes fraction",
+                             clip_on=False)
+
     return fig
 
 
 #%%
-# MY_version ###############################################
-##############################################################
-##############################################################
-
 #LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt-test')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
@@ -215,8 +264,8 @@ ep_s_ = []
 for protocol in protocols: 
     ep_s = []
     for i, data in enumerate(data_s): 
-        print(i)
-        ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed'])
+        print("File ", i)
+        ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed', 'rawFluo'])
         ep.init_visual_stim(data) 
         ep_s.append(ep)
     ep_s_.append(ep_s)
@@ -227,15 +276,15 @@ for protocol in protocols:
 ########################################################################
 for p, protocol in enumerate(protocols):
     ep_s = ep_s_[p]
-    plot_evoked_pattern(EP_s=ep_s, 
-                        quantity='dFoF', 
-                        with_stim_inset=True, 
-                        behavior_split=False)
-    
     #plot_evoked_pattern(EP_s=ep_s, 
     #                    quantity='dFoF', 
     #                    with_stim_inset=True, 
-    #                    behavior_split=True)
+    #                    behavior_split=False)
+    
+    plot_evoked_pattern(EP_s=ep_s, 
+                        quantity='dFoF', 
+                        with_stim_inset=True, 
+                        behavior_split=True)
 
 
 #%%
@@ -255,6 +304,21 @@ fig, axR = pt.figure(axes=(5,1),
                          top=5,
                          right=3)
 
+resp = np.array(getattr(ep, 'rawFluo'))
+print(resp.shape)
+column_lists = [[] for _ in range(5)] # column[i] will store the responses of this specific stimuli with behavioral condition if needed
+
+Patterncond_s = []
+for stim_id in range(5):
+    pattern_cond = np.array([ep.index[i] == stim_id for i in range(len(ep.index))])
+    Patterncond_s.append(pattern_cond)
+
+for stim_id in range(5):
+    pattern_cond = Patterncond_s[stim_id]
+    print(len(pattern_cond))
+    temp = resp[pattern_cond,:,:]
+    column_lists[stim_id].append(temp)
+
 param = param_values[0]
 for column in range(5):
     stim_inset = pt.inset(axR[column], [0.1, 0.8, 0.8, 0.8])
@@ -267,3 +331,47 @@ for column in range(5):
     #image =  np.rot90(image, k=1)
     #stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
     #stim_inset.axis('off')
+    # RASTER ######################################################################
+    # mean response for raster
+    resp_ = column_lists[column]
+    mean_resp_s = []
+    for r in resp_:
+        if r is None or r.shape[0] == 0: #no trials for this file
+            mean_resp_s.append(np.full((r.shape[1], r.shape[2]), np.nan)) #or...not plot invalid rois for the other state
+        else:
+            mean_resp = np.nanmean(r, axis=0) #mean over trials!
+            mean_resp_s.append(mean_resp)
+
+    combined = np.concatenate(mean_resp_s, axis=0)
+    #norm full
+    combined = (combined-combined.min(axis=1).reshape(len(combined),1))
+    
+
+    #reorder neurons by similarity (but keep same order between act and rest)
+    valid = np.isfinite(combined).all(axis=1) & (np.nanstd(combined, axis=1) > 0)
+    dist = pdist(combined[valid], metric='correlation')
+    Z = linkage(dist, method='average')
+    
+    order = leaves_list(Z)
+    combined = combined[order, :]
+    order_mantained = order
+    
+    # Plot raster
+    axR[column].imshow(combined,
+                        cmap = pt.plt.cm.plasma, #cmap=pt.binary,
+                        aspect='auto', interpolation='none',
+                        vmin=0, vmax=2,
+                        extent=(ep_s[0].t[0], ep_s[0].t[-1], 0, combined.shape[0]))
+
+    pt.set_plot(axR[column], [], xlim=[ep_s[0].t[0], ep_s[0].t[-1]])
+    
+    pt.bar_legend(axR[column], 
+                    colorbar_inset=dict(rect=[1.1,.1,.04,.8], facecolor=None),
+                    colormap = pt.plt.cm.plasma, #colormap=pt.binary,
+                    bar_legend_args={},
+                    label='normalized $\\Delta$F/F',
+                    bounds=None,
+                    ticks = None,
+                    ticks_labels=None,
+                    no_ticks=False,
+                    orientation='vertical')
