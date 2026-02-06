@@ -375,10 +375,10 @@ class PDF_angle_contrast:
         # --- Define panels using inch-based coordinates
         # Format: X0, Y0, DX, DY (in inches)
         self.AXs['Notes']                  = self.create_panel([0.5, 0.5, 7, 1], 'Notes', hide_axis=True)
-        self.AXs['Traces']                 = self.create_panel([0.5, 1.5, 7, 2], 'Traces', hide_axis=True)
-        self.AXs['Variation dFoF']         = self.create_panel([0.5, 3.5, 4, 2], 'Variation dFoF')
-        self.AXs['Responsiveness roi']     = self.create_panel([4.5, 3.5, 1.5, 1.5], 'Responsiveness roi')
-        self.AXs['Responsiveness session'] = self.create_panel([6.5, 3.5, 1.5, 1.5], 'Responsiveness session')
+        self.AXs['Traces']                 = self.create_panel([0.7, 1, 7, 2.5], 'Traces', hide_axis=True)
+        self.AXs['Variation dFoF']         = self.create_panel([0.5, 3, 4, 2], 'Variation dFoF')
+        self.AXs['Responsiveness roi']     = self.create_panel([4.5, 3, 1.5, 1.5], 'Responsiveness roi')
+        self.AXs['Responsiveness session'] = self.create_panel([6.5, 3, 1.5, 1.5], 'Responsiveness session')
         
 
         plt.tight_layout()

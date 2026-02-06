@@ -21,6 +21,11 @@ pt.set_style('manuscript')
 
 from scipy.cluster.hierarchy import optimal_leaf_ordering
 from matplotlib.transforms import blended_transform_factory
+
+from sklearn.decomposition import PCA
+import matplotlib.colors as mcolors
+
+
 #%%  FUNCTIONS
 def plot_evoked_pattern(EP_s,  
                         pattern_cond = [], 
@@ -35,7 +40,8 @@ def plot_evoked_pattern(EP_s,
                         ax_scale=(1.3,.3), 
                         axR=None, 
                         axT=None, 
-                        behavior_split=False):
+                        behavior_split=False, 
+                        clustering = 'PCA'):
 
     if with_stim_inset and (ep_s[0].visual_stim is None):
         print('\n [!!] visual stim of episodes was not initialized  [!!]  ')
@@ -143,50 +149,79 @@ def plot_evoked_pattern(EP_s,
 
         combined = np.concatenate(mean_resp_s, axis=0)
 
-        #normalization : 
-        if raster_norm == 'full': #shift to have only positive values
-            combined_min = combined.min(axis=1).reshape(len(combined),1)
-            combined = combined-combined_min
-        else:
-            pass
-     
+        #subtract baseline
+        combined_zerobaseline = np.asarray([trace - np.mean(trace[ 0 : int(-(ep_s[0].t[0])*1000)]) for trace in combined])
+       
         #reorder neurons by similarity (but keep same order between act and rest)
-        valid = np.isfinite(combined).all(axis=1) & (np.nanstd(combined, axis=1) > 0)
-        dist = pdist(combined[valid], metric='correlation')
-        Z = linkage(dist, method="weighted") #average #complete
-        Zopt = optimal_leaf_ordering(Z, dist)
+        valid = np.isfinite(combined_zerobaseline).all(axis=1) & (np.nanstd(combined_zerobaseline, axis=1) > 0)
 
-        #if column==0:
-        #    order = leaves_list(Zopt)
-        #    order_mantained = order
-        #combined = combined[order_mantained, :]
-        
-        if not behavior_split: 
-            order = leaves_list(Zopt)
-        if behavior_split and state == "ACT":
-            order = leaves_list(Zopt)
-        elif behavior_split and state== "REST":
-            order = order_mantained #not recalculated, taking the previous one (ACT of the same stim)
 
-        combined = combined[order, :]
-        order_mantained = order
+        if clustering == "corr_link":
+            #old option -> more for discrete clusters, dendograms 
+            dist = pdist(combined_zerobaseline[valid], metric='correlation')
+            Z = linkage(dist, method="weighted") #average #complete
+            Zopt = optimal_leaf_ordering(Z, dist)
+            if not behavior_split: 
+                order = leaves_list(Zopt)
+            if behavior_split and state == "ACT":
+                order = leaves_list(Zopt)
+            elif behavior_split and state== "REST":
+                order = order_mantained #not recalculated, taking the previous one (ACT of the same stim)
+            combined_zerobaseline_ordered = combined_zerobaseline[order, :]
+            order_mantained = order
+
+
+        if clustering == "PCA": 
+            #PCA -> more for smooth gradients, temporal motifs
+            X = combined_zerobaseline[valid]
+            
+            #z-score each ROI across time (recommended)
+            #Xz = (X - np.mean(X, axis=1, keepdims=True)) / np.std(X, axis=1, keepdims=True)
+            
+            pca = PCA(n_components=1)
+            pc1_scores = pca.fit_transform(X).squeeze()
+            pca_order_valid = np.argsort(-pc1_scores)
+            valid_indices = np.where(valid)[0]
+            if not behavior_split: 
+                order = valid_indices[pca_order_valid]
+            if behavior_split and state == "ACT":
+                order = valid_indices[pca_order_valid]
+            elif behavior_split and state== "REST":
+                order = order_mantained #not recalculated, taking the previous one (ACT of the same stim)
+            
+            # reorder full matrix
+            combined_zerobaseline_ordered = combined_zerobaseline[order, :]
+            #combined_zerobaseline_ordered = Xz[order, :]
+            order_mantained = order
+
         
         # Plot raster
-        #print(combined)
-        #print(combined.max(axis=1).reshape(len(combined),1))
-        vmin = 0
-        vmax = 2
-        axR[column].imshow(combined,
-                           cmap = pt.plt.cm.plasma, #cmap=pt.binary,
+        print("max top roi", np.nanmax(combined_zerobaseline_ordered[0]))
+        print("min rop roi", np.nanmin(combined_zerobaseline_ordered[0]))
+
+        print("max bottom roi", np.nanmax(combined_zerobaseline_ordered[-1]))
+        print("min bottom roi", np.nanmin(combined_zerobaseline_ordered[-1]))
+        
+        vmin = -1
+        vmax = 1
+        cmap_graywarm = mcolors.LinearSegmentedColormap.from_list( "graywarm",
+                                                                   ["#3b4cc0",  # blue (negative)
+                                                                   "#bdbbbb",  # mid gray (zero)
+                                                                   "#b40426"   # red (positive)
+                                                                   ],
+                                                                   N=256)
+        
+        axR[column].imshow(combined_zerobaseline_ordered,
+                           cmap = cmap_graywarm, #cmap=pt.binary, #pt.plt.cm.plasma #pt.plt.cm.coolwarm
                            aspect='auto', 
                            interpolation='none',
                            vmin=vmin, vmax=vmax,
-                           extent=(ep_s[0].t[0], ep_s[0].t[-1], 0, combined.shape[0]))
+                           extent=(ep_s[0].t[0], ep_s[0].t[-1], 0, combined_zerobaseline_ordered.shape[0]))
 
         time_max = ep_s[0].time_duration[0] + 1 #assumaes prestim 1
         pt.set_plot(axR[column], 
                     spines = ['bottom'],
-                    yticks=[0, len(combined)],
+                    yticks=[0, len(combined_zerobaseline_ordered)],
                     ylabel='ROI',
                     xticks=np.arange(-1, time_max+1, 1), 
                     xlabel='Time (s)',
@@ -195,7 +230,7 @@ def plot_evoked_pattern(EP_s,
        
         pt.bar_legend(axR[column], 
                       colorbar_inset=dict(rect=[1.1,.1,.04,.8], facecolor=None),
-                      colormap = pt.plt.cm.plasma, #colormap=pt.binary,
+                      colormap = pt.plt.cm.coolwarm, #colormap=pt.binary, #pt.plt.cm.plasma #coolwarm
                       bar_legend_args={'size':1},
                       label='normalized $\\Delta$F/F',
                       X=np.arange(vmin, vmax+0.5, 0.5),
@@ -217,7 +252,7 @@ def plot_evoked_pattern(EP_s,
                                  clip_on=False)
 
         
-        axR[column].annotate(f"{len(combined)}", 
+        axR[column].annotate(f"{len(combined_zerobaseline_ordered)}", 
                              xy=(-0.25,0), 
                              fontsize=15,
                              xycoords="axes fraction",
@@ -228,7 +263,7 @@ def plot_evoked_pattern(EP_s,
 
 #%%
 #LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
@@ -246,8 +281,8 @@ for index in range(len(SESSIONS['files'])):
     data_s.append(data)
 
 #%%
-protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
-#protocols = ["Natural-Images-4-repeats"]
+#protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
+protocols = ["static-patch"]
 
 ep_s_ = []
 for protocol in protocols: 
@@ -268,104 +303,58 @@ for p, protocol in enumerate(protocols):
     plot_evoked_pattern(EP_s=ep_s, 
                         quantity='dFoF', 
                         with_stim_inset=True, 
-                        behavior_split=False)
+                        behavior_split=False, 
+                        clustering = 'PCA')
     
+    #plot_evoked_pattern(EP_s=ep_s, 
+    #                    quantity='dFoF', 
+    #                    with_stim_inset=True, 
+    #                    behavior_split=True, 
+    #                    clustering = 'PCA')
+#######################################################################################################################
+#######################################################################################################################
+
+#%% my data ##############################################################
+##########################################################################
+##########################################################################
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','vision-survey', 'NDNF-Cre-batch1','NWBs')
+SESSIONS = scan_folder_for_NWBfiles(datafolder)
+SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
+dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
+                 'method_for_F0' : 'sliding_percentile', # either 'minimum', 'percentile', 'sliding_minimum', or 'sliding_percentile'
+                 'sliding_window' : 300. , # seconds (used only if METHOD= 'sliding_minimum' | 'sliding_percentile')
+                 'percentile' : 10. , # for baseline (used only if METHOD= 'percentile' | 'sliding_percentile')
+                 'neuropil_correction_factor' : 0.8 }# fraction of neuropil substracted to fluorescence
+
+data_s = []
+for index in range(len(SESSIONS['files'])):
+    filename = SESSIONS['files'][index]
+    data = Data(filename,verbose=False)
+    data.build_dFoF(**dFoF_options, verbose=False)
+    data.init_visual_stim() #initializes visual stim (7 protocols (experiments) per file)
+    data_s.append(data)
+
+#%%
+protocols = ["static-patch"]
+
+ep_s_ = []
+for protocol in protocols: 
+    ep_s = []
+    for i, data in enumerate(data_s): 
+        print("File ", i)
+        ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed', 'rawFluo'])
+        ep.init_visual_stim(data) 
+        ep_s.append(ep)
+    ep_s_.append(ep_s)
+
+#%%
+for p, protocol in enumerate(protocols):
+    ep_s = ep_s_[p]
+    plot_evoked_pattern(EP_s=ep_s, 
+                        quantity='dFoF', 
+                        with_stim_inset=True, 
+                        behavior_split=False)
     plot_evoked_pattern(EP_s=ep_s, 
                         quantity='dFoF', 
                         with_stim_inset=True, 
                         behavior_split=True)
-
-#%%
-
-def plot_evoked_pattern(EP_s,  
-                        pattern_cond = [], 
-                        quantity='rawFluo',
-                        rois=None,
-                        with_stim_inset=True,
-                        with_mean_trace=False,
-                        factor_for_traces=2,
-                        raster_norm='full',
-                        Tbar=1,
-                        min_dFof_range=4,
-                        ax_scale=(1.3,.3), 
-                        axR=None, 
-                        axT=None, 
-                        behavior_split=False):
-
-
-    ####### initialize figure
-    fig, axR = pt.figure(axes=(16,1),
-                         ax_scale=(2, 11),
-                         right=4,
-                         left=0.3,
-                         top=(4.5 if with_stim_inset else 1))
-    
-    varied_params1 = list(ep_s[0].varied_parameters.keys())[0]
-    param_values1 = ep_s[0].varied_parameters[varied_params1]
-
-    varied_params2 = list(ep_s[0].varied_parameters.keys())[1]
-    param_values2 = ep_s[0].varied_parameters[varied_params2]
-
-    print("jj", param_values1)
-    print("jkjk", param_values2)
-
-    i=0
-    for param2 in param_values2:
-        for param1 in param_values1:
-            print(param1, param2)
-            stim_inset = pt.inset(axR[i], [0.1, 0.8, 0.8, 0.8])
-            cond_a = ep.find_episode_cond(key="angle",value=param1)
-            cond_c = ep.find_episode_cond(key="contrast",value=param2)
-            #print(cond_a)
-            #print(cond_c)
-            iStim = np.flatnonzero(cond_a & cond_c)[0]
-            image =  ep.visual_stim.get_image(iStim)
-            image =  np.rot90(image, k=1)
-            stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
-            stim_inset.axis('off')
-            i+=1
-
-    return fig
-#%%
-#LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
-SESSIONS = scan_folder_for_NWBfiles(datafolder)
-SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
-dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
-                 'method_for_F0' : 'sliding_percentile', # either 'minimum', 'percentile', 'sliding_minimum', or 'sliding_percentile'
-                 'sliding_window' : 300. , # seconds (used only if METHOD= 'sliding_minimum' | 'sliding_percentile')
-                 'percentile' : 10. , # for baseline (used only if METHOD= 'percentile' | 'sliding_percentile')
-                 'neuropil_correction_factor' : 0.8 }# fraction of neuropil substracted to fluorescence
-
-data_s = []
-for index in range(len(SESSIONS['files'])):
-    filename = SESSIONS['files'][index]
-    data = Data(filename,verbose=False)
-    data.build_dFoF(**dFoF_options, verbose=False)
-    data.init_visual_stim() #initializes visual stim (7 protocols (experiments) per file)
-    data_s.append(data)
-
-#%%
-protocols = ['random-dots']
-#protocols = ["Natural-Images-4-repeats"]
-
-ep_s_ = []
-for protocol in protocols: 
-    ep_s = []
-    for i, data in enumerate(data_s): 
-        print("File ", i)
-        ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed', 'rawFluo'])
-        ep.init_visual_stim(data) 
-        ep_s.append(ep)
-    ep_s_.append(ep_s)
-
-#%% 
-########################################################################
-##################### RESULTS PER PROTOCOL #############################
-########################################################################
-for p, protocol in enumerate(protocols):
-    ep_s = ep_s_[p]
-    plot_evoked_pattern(EP_s=ep_s, 
-                        quantity='dFoF', 
-                        with_stim_inset=True, 
-                        behavior_split=False)

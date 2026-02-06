@@ -5,7 +5,7 @@
 import sys, os
 import matplotlib.pyplot as plt
 
-sys.path += ['../../physion/src'] # add src code directory for physion
+sys.path += ['../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data
 from physion.utils import plot_tools as pt
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles

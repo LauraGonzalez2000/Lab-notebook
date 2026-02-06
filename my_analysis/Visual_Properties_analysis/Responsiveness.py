@@ -246,9 +246,102 @@ def plot_responsiveness_per_protocol(ep, nROIs, AX, idx, p, Resp_ROI_dict):
     pt.annotate(AX[0], f'{nROIs} ROIs', (1, -0.4), ha='right', va='top')
     return 0
 
+def plot_responsiveness2_per_protocol(data_s, AX, idx,  p, type='means', behavior_split=False):
+    pos_s = []
+    neg_s = []
+
+    resp_cond_s = []
+    pos_cond_s = []
+    neg_cond_s = []
+
+    for data in data_s:
+        ep = EpisodeData(data, protocol_name=p, quantities=['dFoF'])
+        
+        sig_list = []
+        val_list = []
+        nROIs = []
+
+        for roi_n in range(data.nROIs):
+
+            t0 = max([0, ep.time_duration[0]-1.5])
+            stat_test_props = dict(
+                interval_pre=[-1.5,0],
+                interval_post=[t0, t0+1.5],
+                test='ttest',
+                sign='both')
+            
+            roi_summary_data = pre_post_statistics(ep,
+                                               episode_cond = ep.find_episode_cond(),
+                                               response_args = dict(roiIndex=roi_n),
+                                               response_significance_threshold=0.05,
+                                               stat_test_props=stat_test_props,
+                                               repetition_keys=list(ep.varied_parameters.keys()))
+
+            sig_list.append(bool(roi_summary_data['significant']))
+            val_list.append(roi_summary_data['value'])
+            nROIs.append(data.nROIs)
+
+        sig_arr = np.array(sig_list)
+        val_arr = np.array(val_list)
+
+        #Compute per-ROI positive/negative significance
+        resp_cond = sig_arr
+        pos_cond = sig_arr & (val_arr > 0)
+        neg_cond = sig_arr & (val_arr < 0)
+
+        resp_cond_s.append(resp_cond)
+        pos_cond_s.append(pos_cond)
+        neg_cond_s.append(neg_cond)
+
+        #Compute per-session proportions
+        pos = np.sum(pos_cond) / len(sig_arr)
+        neg = np.sum(neg_cond) / len(sig_arr)
+
+        pos_s.append(pos)
+        neg_s.append(neg)
+
+    if type== 'means':
+        final_pos = np.mean(pos_s)
+        final_neg = np.mean(neg_s)
+        final_ns = 1 - final_pos - final_neg
+        AX[0].annotate('average over %i sessions ,   mean$\\pm$SEM across sessions' % len(data_s),
+                               (1, -0.6), xycoords='axes fraction')
+        
+        sem = stats.sem([pos_s, neg_s], axis=1) 
+
+        pt.annotate(AX[idx], 'Pos= %.1f ± %.1f %%' % (100 * final_pos, 100 *sem[0]),
+                (1, 0), ha='right', va='top', fontsize=6)
+        pt.annotate(AX[idx], 'Neg= %.1f ± %.1f %%' % (100 * final_neg, 100 *sem[1]),
+                    (1, -0.2), ha='right', va='top', fontsize=6)
+        
+
+    elif type == 'ROI':
+        pos_cond_s = np.concatenate(pos_cond_s)
+        neg_cond_s = np.concatenate(neg_cond_s)
+    
+        final_pos = np.mean(pos_cond_s)
+        final_neg = np.mean(neg_cond_s)
+        final_ns = 1 - final_pos - final_neg
+        AX[0].annotate('average over %i ROIs' % np.sum(nROIs),
+                               (1, -0.6), xycoords='axes fraction')
+        
+        pt.annotate(AX[idx], 'Pos= %.1f %%' % (100 * final_pos),
+                (1, 0), ha='right', va='top', fontsize=6)
+        pt.annotate(AX[idx], 'Neg= %.1f %%' % (100 * final_neg),
+                    (1, -0.2), ha='right', va='top', fontsize=6)
+
+    print(final_pos, final_neg, final_ns)
+    pt.pie(data=[final_pos, final_neg, final_ns],
+        ax=AX[idx],
+        COLORS=['green', 'red', 'grey'])
+
+    AX[idx].set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
+    
+    return 0
+
 #%% Load data
 #datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch1','NWBs')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','Vision-survey', 'NDNF-Cre','NWBs')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -290,7 +383,7 @@ protocols = ['static-patch',
 fig, AX  = pt.figure(axes = (len(protocols),1))
 
 for idx, p in enumerate(protocols):
-    plot_responsiveness2_per_protocol(data_s, AX, idx, p, type='ROI')
+    plot_responsiveness2_per_protocol(data_s, AX, idx, p, type='ROI', behavior_split=False)
 
 #%%
 ############################################################################################################

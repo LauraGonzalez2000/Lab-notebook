@@ -830,7 +830,7 @@ def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
 ######################################## 8 ORIENTATIONS 2 contrasts ##############################################
 ##################################################################################################################
 #%% LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_orientations_aligned')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_orientations')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -855,6 +855,13 @@ for idx, filename in enumerate(SESSIONS['files']):
 #%% [mardown]
 ## GROUPED ANALYSIS
 #%% 8 ori 2 contrasts
+
+#%%
+protocol = 'ff-gratings-8orientation-2contrasts-15repeats'
+fig1, _  = plot_dFoF_of_protocol(data_s=data_s_ori, protocol=protocol)
+
+
+#%%
 fig1, fig2, fig3, fig4 = generate_figures_GROUP(data_s_ori, subplots_n=16)
 create_group_PDF(fig1, fig2, fig3, fig4, 'NDNF')
 
@@ -862,7 +869,7 @@ create_group_PDF(fig1, fig2, fig3, fig4, 'NDNF')
 ######################################## 2 ORIENTATIONS 8 contrasts ##############################################
 ##################################################################################################################
 #%% LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_contrasts_aligned')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_contrasts')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -892,7 +899,7 @@ fig1, fig2, fig3, fig4 = generate_figures_GROUP(data_s_con, subplots_n=16)
 create_group_PDF(fig1, fig2, fig3, fig4, 'NDNF')
 
 #%%
-def plot_responsiveness2_of_protocol_(data_s, AX, idx, p, type='means'):
+def plot_responsiveness2_of_protocol_(data_s, idx, p, type='means', type_ = "contrast"):
 
     nROIs = 0
 
@@ -919,7 +926,7 @@ def plot_responsiveness2_of_protocol_(data_s, AX, idx, p, type='means'):
                                                    response_args = dict(roiIndex=roi_n),
                                                    response_significance_threshold=0.05,
                                                    stat_test_props=stat_test_props,
-                                                   repetition_keys=["repeat", "contrast"])
+                                                   repetition_keys=["repeat", type_])
             
 
             #print(type(roi_summary_data['significant']))
@@ -994,23 +1001,16 @@ def plot_responsiveness2_of_protocol_(data_s, AX, idx, p, type='means'):
         final_neg_.append(final_neg)
         final_ns_.append(final_ns)
 
-        ax = AX[c] if isinstance(AX, (list, tuple)) or hasattr(AX, "__len__") else AX
-
-        pt.pie(data=[final_pos, final_neg, final_ns],
-            ax=ax,
-            COLORS=['green', 'red', 'grey'])
-
-    
     return final_pos_, final_neg_, final_ns_
 
-def plot_(x, final_pos_, final_neg_, final_ns_):
+def plot_(x, final_pos_, final_neg_, final_ns_, type = "angle"):
     fig, AX = pt.figure(axes = (1,1),figsize=(2,2), ax_scale=(2, 5))
     
     pt.plot(x, final_pos_, ax=AX, color = "green")
     pt.set_plot(ax = AX, 
                 ylabel='Responsiveness (%)', 
                 yticks=np.arange(0, 105, 10),
-                xlabel='contrast', 
+                xlabel=type, 
                 fontsize = 15)
     AX.set_xticks(x)
     AX.set_xticklabels([f'{xi:.2f}' for xi in x], rotation=90, ha="right")
@@ -1022,13 +1022,17 @@ def plot_(x, final_pos_, final_neg_, final_ns_):
     return 0
 
 #%%
-subplots = 8
-fig5, AX5 = pt.figure(axes = (subplots,1),figsize=(1.4,8) )
-final_pos_, final_neg_, final_ns_ = plot_responsiveness2_of_protocol_(data_s_ori, AX5, idx, data_s_ori[0].protocols[0], type='ROI')
+# 8 orientations 2 contrasts
+type = "angle"
+final_pos_, final_neg_, final_ns_ = plot_responsiveness2_of_protocol_(data_s_ori, idx, data_s_ori[0].protocols[0], type='ROI', type_ = "contrast")
+ep = EpisodeData(data_s_ori[0], protocol_name=data_s_ori[0].protocols[0], quantities=['dFoF'])
+x = ep.varied_parameters[type]
+plot_(x, final_pos_, final_neg_, final_ns_, type=type)
+
 #%%
-ep = EpisodeData(data_s_ori[0], protocol_name=data.protocols[0], quantities=['dFoF'])
-x = ep.varied_parameters['angle']
-print(final_pos_)
-print(final_neg_)
-print(final_ns_)
-plot_(x, final_pos_, final_neg_, final_ns_)
+# 8 contrasts 2 orientations
+type = "contrast"
+final_pos_, final_neg_, final_ns_ = plot_responsiveness2_of_protocol_(data_s_con, AX5, idx, data_s_con[0].protocols[0], type='ROI', type_ = "angle")
+ep = EpisodeData(data_s_con[0], protocol_name=data_s_con[0].protocols[0], quantities=['dFoF'])
+x = ep.varied_parameters[type]
+plot_(x, final_pos_, final_neg_, final_ns_, type = type)

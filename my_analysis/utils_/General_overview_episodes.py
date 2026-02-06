@@ -263,7 +263,13 @@ def plot_dFoF_of_protocol(data_s,
     #fig, AX = pt.figure(axes_extents=[[ [1,1], [1,1], [1,1], [1,1], [1,1], [1,1], [1,1], [1,1], [1,1], [1,1], [1,1], [1,1], [1,1], [1,1], [1,1], [1,1]]])  #generalize 
 
     fig, AX = pt.figure(axes_extents=[[[1,1]] * 8,   # row 0: contrast 1 - generalize
-                                      [[1,1]] * 8])   # row 1: contrast 2 - generalize
+                                      [[1,1]] * 8],  # row 1: contrast 2 - generalize
+                        top=2, 
+                        bottom = 2,
+                        right = 2, 
+                        left = 2, 
+                        figsize=(10,2))
+                        #ax_scale=(2, 11))   
     
     session_traces = []
 
@@ -321,33 +327,48 @@ def plot_dFoF_of_protocol(data_s,
             elif data.protocols[0]=="ff-gratings-8orientation-2contrasts-15repeats":
                 ax = AX[c_idx][o_idx]
             
-            ax.plot(mean_trace, color='k')
-            ax.fill_between(np.arange(len(mean_trace)),
+            ax.plot(episodes.t, mean_trace, color='k')
+            time_max = episodes.time_duration[0] + 1 #assumaes prestim 1
+
+            ylim_enhancement=.8
+            ymin, ymax = ax.get_ylim()
+            dy = ymax-ymin
+            ylim = [ymin-ylim_enhancement*dy/100.,ymax+ylim_enhancement*dy/100.]
+            print("ylim : ", ylim)
+
+            pt.set_plot(ax, 
+                        spines = ['left', 'bottom'],
+                        xticks=np.arange(-1, time_max+1, 1), 
+                        xlabel='Time (s)',
+                        xlim=[episodes.t[0], episodes.t[-1]], 
+                        ylim=ylim)
+        
+            ax.fill_between(episodes.t,
                             mean_trace - sem_trace,
                             mean_trace + sem_trace,
                             color='k',
                             alpha=0.3)
 
-            ax.axvspan(1000,
-                       1000 + 1000 * episodes.time_duration[0],
+            ax.axvspan(0,
+                       episodes.time_duration[0],
                        color='lightgrey',
                        alpha=0.5,
                        zorder=0)
 
     if data.protocols[0]=="ff-gratings-2orientations-8contrasts-15repeats":
-        AX[0][0].set_ylabel("a = 0")
-        AX[1][0].set_ylabel("a = 90")
+        AX[0][0].set_ylabel("a = 0  \n dFoF")
+        AX[1][0].set_ylabel("a = 90 \n dFoF")
         # Label columns
         for c_idx, contrast in enumerate(contrasts):
-            AX[1][c_idx].set_xlabel(f"c = {contrast:.2f}")
+            AX[1][c_idx].set_xlabel(f"Time (s) \n c = {contrast:.2f}")
+
     elif data.protocols[0]=="ff-gratings-8orientation-2contrasts-15repeats":
         #label rows
-        AX[0][0].set_ylabel("C = 0.5")
-        AX[1][0].set_ylabel("C = 1")
+        AX[0][0].set_ylabel("C = 0.5 \n dFoF")
+        AX[1][0].set_ylabel("C = 1 \n dFoF")
         # Label columns
         for o_idx, orientation in enumerate(orientations):
-            AX[1][o_idx].set_xlabel(f"a = {orientation:.0f}°")
-
+            AX[1][o_idx].set_xlabel(f"Time (s) \n a = {orientation:.0f}°")
 
     # annotate session or ROI info
     if roiIndex is None:

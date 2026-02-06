@@ -205,6 +205,36 @@ class AlluvialTool:
         ax.autoscale()
         return ax
 
+    def get_color_array(self, colors=None, rand_seed=1, cmap=None, alpha=0.5, **kwargs):
+        _ = kwargs
+
+        if rand_seed is not None:
+            np.random.seed(rand_seed)
+
+        cmap = cmap if cmap is not None else colormaps['hsv']
+
+        # --- assign colors to src and dst groups ---
+        src_items = self.src_group
+        dst_items = self.dst_group
+
+        src_colors = {
+            item: cmap(v) for item, v in zip(src_items, np.random.rand(len(src_items)))
+        }
+        dst_colors = {
+            item: cmap(v) for item, v in zip(dst_items, np.random.rand(len(dst_items)))
+        }
+
+        # --- blend colors for each polygon ---
+        polygon_colors = []
+        for a_item, b_item in self.alluvial_fan:
+            c_src = np.array(src_colors[a_item])
+            c_dst = np.array(dst_colors[b_item])
+            blended = (1 - alpha) * c_src + alpha * c_dst
+            polygon_colors.append(blended)
+
+        return np.array(polygon_colors)
+
+    '''
     def get_color_array(self, colors=None, color_side=0, rand_seed=1, cmap=None, **kwargs):
         _ = kwargs
         color_items = self.dst_group if color_side else self.src_group
@@ -220,7 +250,7 @@ class AlluvialTool:
             item = b_item if color_side else a_item
             polygon_colors += [color_array[ind_dic[item]]]
         return np.array(polygon_colors)
-
+    '''
     def get_vein_label_lengths(self):
         item_text_len = max([len(it) for it in self.item_width_dict], default=0)
         width_text_len = max([len(str(w)) for w in self.item_width_dict.values()], default=0)

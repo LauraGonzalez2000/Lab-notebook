@@ -14,6 +14,7 @@ from physion.utils  import plot_tools as pt
 import numpy as np
 import itertools
 import matplotlib.pyplot as plt
+from physion.analysis.episodes.trial_statistics import pre_post_statistics
 
 # %% [markdown]
 # ## Load data
@@ -96,7 +97,11 @@ def plot_qsm(index, coord_map, diffs):
         
 
     #quantification to rank 
-    summary = ep.compute_summary_data(stat_test_props={})
+    summary = pre_post_statistics(ep, 
+                                  episode_cond = ep.find_episode_cond(),
+                                  response_args = {}, 
+                                  nMin_episodes=2)
+    
     center_cond = (summary['x-center']==0) & (summary['y-center']==0)
     center_value = summary['value'][center_cond]
     center_resp = summary['significant'][center_cond]
@@ -119,8 +124,10 @@ diffs = []
 plot_qsm(5, coord_map, diffs)
 
 # %%
-
-summary = ep.compute_summary_data(stat_test_props={})
+summary = pre_post_statistics(ep, 
+                              episode_cond = ep.find_episode_cond(),
+                              response_args = {}, 
+                              nMin_episodes=2)
 center_cond = (summary['x-center']==0) & (summary['y-center']==0)
 center_value = summary['value'][center_cond]
 around_value = summary['value'][~center_cond].mean()
@@ -134,12 +141,10 @@ print("mean value around : ",around_value)
 print("difference center - around : ",diff_value)
 #%%
 plot_qsm(index=0, coord_map=coord_map, diffs=diffs)
-#%%
-print(SESSIONS['files'])
-print(SESSIONS['files'][0][-1])
-
 #%% [markdown]
-# ## Plot for all files
+###############################################################################
+#### Plot for all files #######################################################
+###############################################################################
 #%%
 diffs = []
 for index in range(len(SESSIONS['files'])):
@@ -148,14 +153,13 @@ for index in range(len(SESSIONS['files'])):
 
 # %%
 print(diffs)
-
 plt.scatter(np.arange(len(diffs)), diffs)
 
 # %% [markdown]
-# ### plot per animal
+###############################################################################
+##### plot per animal #########################################################
+###############################################################################
 #%%
-
-# Example: diffs and matching animal IDs
 animal_ids = ["1", "2", "3", "2", "3", 
               "4", "5", "6", "7", "8",
               "9", "10", "7", "2", "3",
@@ -192,9 +196,3 @@ plt.xticks(range(len(unique_animals)), unique_animals)
 plt.xlabel("Animal")
 plt.ylabel("Difference")
 plt.title("Differences per animal")
-
-
-def responsive_center():
-    files = []
-    
-    return files
