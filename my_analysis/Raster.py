@@ -27,19 +27,35 @@ import matplotlib.colors as mcolors
 
 
 #%%  FUNCTIONS
+def nonlinear_cmap(cmap, vmin, vmax, exp=0.5, N=256):
+    """
+    Smooth nonlinear remapping of a colormap with:
+    - asymmetric vmin/vmax
+    - midpoint fixed at value = 0
+    - power-law control of color saturation
+    """
+    i = np.linspace(0, 1, N)
+    mid = (0 - vmin) / (vmax - vmin)  # where value=0 lies in the data range
+
+    i_nl = np.empty_like(i)
+
+    left = i <= mid
+    right = i > mid
+
+    # left side (vmin -> 0)
+    i_nl[left] = (0.5 * (i[left] / mid) ** exp)
+
+    # right side (0 -> vmax)
+    i_nl[right] = (0.5 + 0.5 * ((i[right] - mid) / (1 - mid)) ** exp)
+
+    colors = cmap(i_nl)
+    return mcolors.ListedColormap(colors)
+
 def plot_evoked_pattern(EP_s,  
                         pattern_cond = [], 
                         quantity='rawFluo',
-                        rois=None,
                         with_stim_inset=True,
-                        with_mean_trace=False,
-                        factor_for_traces=2,
-                        raster_norm='full',
-                        Tbar=1,
-                        min_dFof_range=4,
-                        ax_scale=(1.3,.3), 
                         axR=None, 
-                        axT=None, 
                         behavior_split=False, 
                         clustering = 'PCA'):
 
@@ -57,9 +73,16 @@ def plot_evoked_pattern(EP_s,
 
     #Calculate behavior condition for each file :
     HMcond_s = []
-    for ep in EP_s:
+    for i, ep in enumerate(EP_s):
         HMcond = compute_high_arousal_cond(ep, pre_stim=1, running_speed_threshold=0.1, metric="locomotion")
         HMcond = np.array(HMcond)
+
+        if i>0 and len(HMcond)!=len(HMcond_s[0]):
+            n_missing = len(HMcond_s[0]) - len(HMcond)
+            pad_shape = (n_missing,)
+            pad = np.full(pad_shape, False)
+            HMcond = np.concatenate([HMcond, pad], axis=0)
+
         HMcond_s.append(HMcond)
     
     #Calculate pattern condition for each stimulus
@@ -80,26 +103,30 @@ def plot_evoked_pattern(EP_s,
         resp = np.array(getattr(EP_s[file_i], quantity))
         
         if resp.shape[0] != EP_s[0].dFoF.shape[0]:
-            print(f"file {file_i} discarded because some trials are missing : {resp.shape[0]} instead of {EP_s[0].dFoF.shape[0]} - way to fix this? ")
+            print(f"In file {file_i} some trials are missing : {resp.shape[0]} instead of {EP_s[0].dFoF.shape[0]}")
+            #pad missing trials with NaNs
+            n_missing = EP_s[0].dFoF.shape[0] - resp.shape[0]
+            pad_shape = (n_missing,) + resp.shape[1:]
+            pad = np.full(pad_shape, np.nan)
+            resp = np.concatenate([resp, pad], axis=0)
+
+        for stim_id in range(n_stim):
+            if not behavior_split:
+                pattern_cond = Patterncond_s[stim_id]
+                temp = resp[pattern_cond,:,:]
+                resp_s.append(temp)
             
-        else:
-            for stim_id in range(n_stim):
-                if not behavior_split:
-                    pattern_cond = Patterncond_s[stim_id]
-                    temp = resp[pattern_cond,:,:]
-                    resp_s.append(temp)
-                
-                elif behavior_split:
-                    HMcond = HMcond_s[file_i]
-                    pattern_cond = Patterncond_s[stim_id]
+            elif behavior_split:
+                HMcond = HMcond_s[file_i]
+                pattern_cond = Patterncond_s[stim_id]
 
-                    final_cond = HMcond & pattern_cond
-                    temp = resp[final_cond,:,:]
-                    resp_s.append(temp)
+                final_cond = HMcond & pattern_cond
+                temp = resp[final_cond,:,:]
+                resp_s.append(temp)
 
-                    final_cond2= ~HMcond & pattern_cond                
-                    temp2 = resp[final_cond2,:,:]
-                    resp_s.append(temp2)
+                final_cond2= ~HMcond & pattern_cond                
+                temp2 = resp[final_cond2,:,:]
+                resp_s.append(temp2)
 
     column_lists = [[] for _ in range(n_cond)] # column[i] will store the responses of this specific stimuli with behavioral condition if needed
     
@@ -107,10 +134,6 @@ def plot_evoked_pattern(EP_s,
         stim_idx = i % n_cond     
         column_lists[stim_idx].append(resp)
 
-    #if behavior_split:
-    #    for j in range(len(EP_s)):
-    #        print(column_lists[0][j].shape,column_lists[1][j].shape,column_lists[2][j].shape,column_lists[3][j].shape )
-    
     varied_params = list(ep_s[0].varied_parameters.keys())[0]
     param_values = ep_s[0].varied_parameters[varied_params]
     order_mantained = []
@@ -151,11 +174,9 @@ def plot_evoked_pattern(EP_s,
 
         #subtract baseline
         combined_zerobaseline = np.asarray([trace - np.mean(trace[ 0 : int(-(ep_s[0].t[0])*1000)]) for trace in combined])
-       
-        #reorder neurons by similarity (but keep same order between act and rest)
         valid = np.isfinite(combined_zerobaseline).all(axis=1) & (np.nanstd(combined_zerobaseline, axis=1) > 0)
 
-
+        #reorder neurons by similarity (but keep same order between act and rest)
         if clustering == "corr_link":
             #old option -> more for discrete clusters, dendograms 
             dist = pdist(combined_zerobaseline[valid], metric='correlation')
@@ -174,12 +195,9 @@ def plot_evoked_pattern(EP_s,
         if clustering == "PCA": 
             #PCA -> more for smooth gradients, temporal motifs
             X = combined_zerobaseline[valid]
-            
-            #z-score each ROI across time (recommended)
-            #Xz = (X - np.mean(X, axis=1, keepdims=True)) / np.std(X, axis=1, keepdims=True)
-            
+            Xz = (X - np.mean(X, axis=1, keepdims=True)) / np.std(X, axis=1, keepdims=True)
             pca = PCA(n_components=1)
-            pc1_scores = pca.fit_transform(X).squeeze()
+            pc1_scores = pca.fit_transform(Xz).squeeze()
             pca_order_valid = np.argsort(-pc1_scores)
             valid_indices = np.where(valid)[0]
             if not behavior_split: 
@@ -188,22 +206,34 @@ def plot_evoked_pattern(EP_s,
                 order = valid_indices[pca_order_valid]
             elif behavior_split and state== "REST":
                 order = order_mantained #not recalculated, taking the previous one (ACT of the same stim)
-            
-            # reorder full matrix
             combined_zerobaseline_ordered = combined_zerobaseline[order, :]
-            #combined_zerobaseline_ordered = Xz[order, :]
             order_mantained = order
 
-        
-        # Plot raster
-        print("max top roi", np.nanmax(combined_zerobaseline_ordered[0]))
-        print("min rop roi", np.nanmin(combined_zerobaseline_ordered[0]))
+        if clustering == 'amplitude':
+            # -> more intuitive
+            X = combined_zerobaseline[valid]
+            #takes las second of stimulation
+            t_start = int(ep_s[0].time_duration[0] * 1000) #assumes 1s prestim
+            t_end   = int((ep_s[0].time_duration[0] + 1) * 1000) #assumes 1 s prestim
+            amplitudes = np.mean(X[:, t_start:t_end], axis=1)
+            amp_order_valid = np.argsort(-amplitudes)
+            valid_indices = np.where(valid)[0]
+            if not behavior_split:
+                order = valid_indices[amp_order_valid]
+            if behavior_split and state == "ACT":
+                order = valid_indices[amp_order_valid]
+            elif behavior_split and state == "REST":
+                order = order_mantained  # keep ACT order
 
-        print("max bottom roi", np.nanmax(combined_zerobaseline_ordered[-1]))
-        print("min bottom roi", np.nanmin(combined_zerobaseline_ordered[-1]))
-        
+            combined_zerobaseline_ordered = combined_zerobaseline[order, :]
+            order_mantained = order
+
+        axR[column].axvline(0, linestyle='--', linewidth=0.5)
+        axR[column].axvline(ep_s[0].time_duration[0], linestyle='--', linewidth=0.5)
+
+        # Plot raster
         vmin = -1
-        vmax = 1
+        vmax = 3
         cmap_graywarm = mcolors.LinearSegmentedColormap.from_list( "graywarm",
                                                                    ["#3b4cc0",  # blue (negative)
                                                                    "#bdbbbb",  # mid gray (zero)
@@ -211,11 +241,14 @@ def plot_evoked_pattern(EP_s,
                                                                    ],
                                                                    N=256)
         
+        cmap_graywarm_nl = nonlinear_cmap(cmap_graywarm, vmin=vmin, vmax=vmax, exp = 0.7, N=256)
+
         axR[column].imshow(combined_zerobaseline_ordered,
-                           cmap = cmap_graywarm, #cmap=pt.binary, #pt.plt.cm.plasma #pt.plt.cm.coolwarm
+                           cmap = cmap_graywarm_nl, #cmap=pt.binary, #pt.plt.cm.plasma #pt.plt.cm.coolwarm
                            aspect='auto', 
                            interpolation='none',
-                           vmin=vmin, vmax=vmax,
+                           vmin = vmin,
+                           vmax = vmax,
                            extent=(ep_s[0].t[0], ep_s[0].t[-1], 0, combined_zerobaseline_ordered.shape[0]))
 
         time_max = ep_s[0].time_duration[0] + 1 #assumaes prestim 1
@@ -230,9 +263,9 @@ def plot_evoked_pattern(EP_s,
        
         pt.bar_legend(axR[column], 
                       colorbar_inset=dict(rect=[1.1,.1,.04,.8], facecolor=None),
-                      colormap = pt.plt.cm.coolwarm, #colormap=pt.binary, #pt.plt.cm.plasma #coolwarm
+                      colormap = cmap_graywarm_nl, #colormap=pt.binary, #pt.plt.cm.plasma #pt.plt.cm.coolwarm
                       bar_legend_args={'size':1},
-                      label='normalized $\\Delta$F/F',
+                      label='$\\Delta$F/F',
                       X=np.arange(vmin, vmax+0.5, 0.5),
                       bounds=[vmin, vmax],
                       ticks = None,
@@ -282,7 +315,7 @@ for index in range(len(SESSIONS['files'])):
 
 #%%
 #protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
-protocols = ["static-patch"]
+protocols = ["Natural-Images-4-repeats"]
 
 ep_s_ = []
 for protocol in protocols: 
@@ -304,13 +337,13 @@ for p, protocol in enumerate(protocols):
                         quantity='dFoF', 
                         with_stim_inset=True, 
                         behavior_split=False, 
-                        clustering = 'PCA')
+                        clustering = 'amplitude')
     
-    #plot_evoked_pattern(EP_s=ep_s, 
-    #                    quantity='dFoF', 
-    #                    with_stim_inset=True, 
-    #                    behavior_split=True, 
-    #                    clustering = 'PCA')
+    plot_evoked_pattern(EP_s=ep_s, 
+                        quantity='dFoF', 
+                        with_stim_inset=True, 
+                        behavior_split=True, 
+                        clustering = 'amplitude')
 #######################################################################################################################
 #######################################################################################################################
 

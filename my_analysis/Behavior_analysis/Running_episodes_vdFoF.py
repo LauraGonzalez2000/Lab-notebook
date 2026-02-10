@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
 
-sys.path += ['../../physion/src'] # add src code directory for physion
+sys.path += ['../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.analysis.episodes.build import EpisodeData
 from physion.analysis.episodes.trial_statistics import pre_post_statistics
@@ -78,7 +78,7 @@ def get_stats(all_diffs_act, all_diffs_rest):
 
 def plot_boxplot(boxplot_dict):
     
-    fig, AX = plt.subplots(1, 1, figsize=(4, 3))
+    fig, AX = plt.subplots(1, 1, figsize=boxplot_dict["figsize"])
 
     x = np.arange(len(boxplot_dict["data"]))
     bp = AX.boxplot(boxplot_dict["data"], 
@@ -89,7 +89,8 @@ def plot_boxplot(boxplot_dict):
     AX.set_xticks(x)
     AX.set_xticklabels(boxplot_dict["labels"])
     AX.set_xlabel("ROIs considered")
-    AX.set_ylabel("baseline act − baseline rest")
+    AX.set_ylabel(boxplot_dict["y_label"])
+    
 
     for patch, color in zip(bp['boxes'], boxplot_dict["colors"]):
         patch.set_facecolor(color)
@@ -152,7 +153,7 @@ def plot_dFoF(diffs_act, diffs_rest, protocol, filename, metric):
     
     # Annotate each bar with its mean value
     for i in range(2):
-        AX[0].text(i, np.max(means) + 3, f'mean {means[i]:.3f}', ha='center', fontsize=6)
+        AX[0].text(i, np.max(means) + 3, f"mean {means[i]:.3f}", ha='center', fontsize=6)
     
     print("ALL ROIs for 1 file")
     print("number of ROIs :", len(diffs_act))
@@ -189,7 +190,7 @@ def plot_dFoF(diffs_act, diffs_rest, protocol, filename, metric):
     
     # Annotate each bar with its mean value
     for i, mean in enumerate(means_):
-        AX[1].text(i, np.max(means_)-0.1, f'mean {mean:.3f}', ha='center', fontsize=6)
+        AX[1].text(i, np.max(means_)-0.1, f"mean {mean:.3f}", ha='center', fontsize=6)
 
     min_plot = np.min(diffs_act)
     max_plot = np.max(diffs_act)
@@ -222,12 +223,12 @@ def plot_trace_vdFoF(traces_act, traces_rest, aligned=False):
 
 
     # Plot traces +- SEM
-    ax.plot(episodes.t, mean_act, color="firebrick", label="Active")
-    ax.plot(episodes.t, mean_rest, color="grey", label="Rest")
+    ax.plot(episodes.t, mean_act, color="greenyellow", label="Active")
+    ax.plot(episodes.t, mean_rest, color="darkolivegreen", label="Rest")
     ax.fill_between(episodes.t, mean_act - sem_act, mean_act + sem_act,
-                    color="firebrick", alpha=0.2)
+                    color="greenyellow", alpha=0.2)
     ax.fill_between(episodes.t, mean_rest - sem_rest, mean_rest + sem_rest,
-                    color="grey", alpha=0.2)
+                    color="darkolivegreen", alpha=0.2)
 
     # Formatting
     ax.set_xlabel("Time (s)")
@@ -291,7 +292,7 @@ def calc_responsiveness(ep, nROIs):
     pos_cond = resp_cond & ([session_summary['value'][i]>0 for i in range(len(session_summary['value']))])
     neg_cond = resp_cond & ([session_summary['value'][i]<0 for i in range(len(session_summary['value']))])
  
-    print(f'{sum(resp_cond)} significant ROI ({np.sum(pos_cond)} positive, {np.sum(neg_cond)} negative) out of {len(session_summary['significant'])} ROIs')
+    print(f"{sum(resp_cond)} significant ROI ({np.sum(pos_cond)} positive, {np.sum(neg_cond)} negative) out of {len(session_summary['significant'])} ROIs")
  
     return resp_cond, pos_cond, neg_cond
 
@@ -326,7 +327,7 @@ def get_diffs_baseline(traces_act_s, traces_rest_s):
 ###################################################################################################################
 #%% Load Data
 
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -440,7 +441,7 @@ AX[0].set_ylabel("Variation of dFoF")
 
 # Annotate each bar with its mean value
 for i in range(1):
-    AX[0].text(i, np.max(means) + 3, f'mean {means[i]:.3f}', ha='center', fontsize=6)
+    AX[0].text(i, np.max(means) + 3, f"mean {means[i]:.3f}", ha='center', fontsize=6)
 
 print("ALL ROIs for 1 file")
 print("number of ROIs :", len(flattened))
@@ -464,7 +465,7 @@ means_ = df_melted.groupby("All")["Variation of dFoF"].mean()
 
 # Annotate each bar with its mean value
 for i, mean in enumerate(means_):
-    AX[1].text(i, np.max(means_)+2, f'mean {mean:.3f}', ha='center', fontsize=6)
+    AX[1].text(i, np.max(means_)+2, f"mean {mean:.3f}", ha='center', fontsize=6)
 
 AX[0].set_ylim([-4,10])
 AX[1].set_ylim([-4,10])
@@ -472,8 +473,8 @@ AX[1].set_ylim([-4,10])
 #%% ################################################################
 ###################### REST AND ACTIVE #############################
 ####################################################################
-#protocol = "Natural-Images-4-repeats"
-protocol = "drifting-gratings"
+protocol = "Natural-Images-4-repeats"
+#protocol = "drifting-gratings"
 #protocol = 'moving-dots' 
 #protocol = 'random-dots'
 #protocol = "static-patch"
@@ -567,15 +568,16 @@ diffs_rest_all = np.concatenate(diffs_rest_s)
 diffs_act_all_ = [x for x in diffs_act_all if not np.isnan(x)]
 diffs_rest_all_ = [x for x in diffs_rest_all if not np.isnan(x)]
 
-
 plot_trace_vdFoF(flattened_act, flattened_rest)
 plot_trace_vdFoF(flattened_act, flattened_rest, aligned=True)
 plot_dFoF(diffs_act_all, diffs_rest_all, protocol=protocol, filename="ALL recordings", metric="roi")
 
-boxplot_dict = {"title": "Difference baselines Act vs Rest",
+boxplot_dict = {"title": "Amplitude peak Act vs Rest",
                 "data" : [diffs_act_all_, diffs_rest_all_],
                 "labels" : ["Active", "Rest"], 
-                "colors" : ["orangered","grey"]}
+                "colors" : ["greenyellow","darkolivegreen"], 
+                "y_label": "Amplitude peak dFoF", 
+                "figsize": (1,3)}
 
 plot_boxplot(boxplot_dict)
 
@@ -602,7 +604,7 @@ plot_dFoF(diffs_act_all_resp, diffs_rest_all_resp, protocol=protocol, filename="
 boxplot_dict = {"title": "Difference baselines Act vs Rest",
                 "data" : [diffs_act_all_resp_, diffs_rest_all_resp_],
                 "labels" : ["Active", "Rest"], 
-                "colors" : ["orangered","grey"]}
+                "colors" : ["orangered","maroon"]}
 
 plot_boxplot(boxplot_dict)
 
@@ -626,10 +628,12 @@ plot_trace_vdFoF(flattened_act_pos, flattened_rest_pos)
 plot_trace_vdFoF(flattened_act_pos, flattened_rest_pos, aligned=True)
 plot_dFoF(diffs_act_all_pos, diffs_rest_all_pos, protocol=protocol, filename="ALL recordings", metric="roi")
 
-boxplot_dict = {"title": "Difference baselines Act vs Rest",
+boxplot_dict = {"title": "Amplitude peak Act vs Rest",
                 "data" : [diffs_act_all_pos_, diffs_rest_all_pos_],
                 "labels" : ["Active", "Rest"], 
-                "colors" : ["orangered","grey"]}
+                "colors" : ["greenyellow","darkolivegreen"], 
+                "y_label": "Amplitude peak dFoF", 
+                "figsize": (1,3)}
 
 plot_boxplot(boxplot_dict)
 
@@ -656,7 +660,9 @@ plot_dFoF(diffs_act_all_neg, diffs_rest_all_neg, protocol=protocol, filename="AL
 boxplot_dict = {"title": "Difference baselines Act vs Rest",
                 "data" : [diffs_act_all_neg_, diffs_rest_all_neg_],
                 "labels" : ["Active", "Rest"], 
-                "colors" : ["orangered","grey"]}
+                "colors" : ["greenyellow","darkolivegreen"], 
+                "y_label": "Amplitude peak dFoF", 
+                "figsize": (1,3)}
 plot_boxplot(boxplot_dict)
 
 
@@ -669,7 +675,18 @@ d_bsl_neg = get_diffs_baseline(traces_act_neg_s, traces_rest_neg_s)
 boxplot_dict = {"title": "Difference baselines",
                 "data" : [d_bsl_all, d_bsl_resp, d_bsl_pos, d_bsl_neg],
                 "labels" : ["All", "Responsive", "Positive", "Negative"], 
-                "colors" : ["grey", "yellow", "green", "orangered"]}
+                "colors" : ["grey", "yellow", "#b40426", "#3b4cc0"], 
+                "y_label": "baseline act − baseline rest", 
+                "figsize": (4,3)}
+
+plot_boxplot(boxplot_dict)
+
+boxplot_dict = {"title": "Difference baselines",
+                "data" : [d_bsl_all, d_bsl_pos, d_bsl_neg],
+                "labels" : ["All", "Positive", "Negative"], 
+                "colors" : ["grey", "#b40426", "#3b4cc0"], 
+                "y_label": "baseline act − baseline rest", 
+                "figsize": (3,3)}
 
 plot_boxplot(boxplot_dict)
 

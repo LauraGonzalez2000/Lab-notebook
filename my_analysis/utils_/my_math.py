@@ -158,7 +158,7 @@ def plot_stats(ax, n_groups, stats, y_pos1=1, y_pos2=1):
             # Get dynamic bar height = 1/8 of axis range
             ymin, ymax = ax.get_ylim()
             print("ymin, ymax :", ymin, ymax)
-            bracket_height = (ymax - ymin) / 8.0
+            bracket_height = (ymax - ymin) / 10.0
 
             # Get the y positions for both bars being compared
             #y_pos1 = means[0] + sems[0]
@@ -167,6 +167,8 @@ def plot_stats(ax, n_groups, stats, y_pos1=1, y_pos2=1):
             if y_pos==y_pos_m:
                 y_pos += (ymax - ymin)/2.5
             y_pos_m=y_pos
+
+            print("y_pos", y_pos)
          
             # Draw a line between the bars
             ax.plot([0, 1], [y_pos, y_pos], color='black', lw=0.9)
@@ -174,7 +176,8 @@ def plot_stats(ax, n_groups, stats, y_pos1=1, y_pos2=1):
             ax.plot([1, 1], [y_pos - bracket_height, y_pos], color='black', lw=0.9)
          
             # Annotate the significance above the line
-            ax.text((0 + 1) / 2, y_pos, f"{significance}", ha='center', va='bottom', fontsize=15)
+            ax.text((0 + 1) / 2, y_pos, f"{significance}", ha='center', va='bottom', fontsize=10)
+
     
     
     if n_groups==3 :
@@ -201,15 +204,16 @@ def plot_stats(ax, n_groups, stats, y_pos1=1, y_pos2=1):
                             # Get the y positions for both bars being compared
                             #y_pos1 = means[j1] + sems[j1]
                             #y_pos2 = means[j2] + sems[j2]
-                            y_pos = max(y_pos1, y_pos2) + 0.2 # Place the significance line above the highest bar
+                            y_pos = max(y_pos1, y_pos2) + 0.8 # Place the significance line above the highest bar
                             if y_pos==y_pos_m:
                                 y_pos +=1
                             y_pos_m=y_pos
                         
-                            # Get dynamic bar height = 1/6 of axis range
+                            # Get dynamic bar height = 1/10 of axis range
+
                             ymin, ymax = ax.get_ylim()
                             print("ymin, ymax :", ymin, ymax)
-                            bracket_height = (ymax - ymin) / 6.0
+                            bracket_height = (ymax - ymin) / 10.0
 
                             # Draw a line between the bars
                             ax.plot([j1, j2], [y_pos, y_pos], color='black', lw=0.9)

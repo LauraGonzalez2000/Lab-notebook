@@ -154,7 +154,7 @@ def plot_barplot_per_protocol(ep, AX, idx, p, subplots_n):
     x = np.arange(target_len) #generalize
     AX[idx].bar(x, mean_vals, alpha=0.8, capsize=4)
     AX[idx].set_xticks(x)
-    AX[idx].set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
+    AX[idx].set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}")
     AX[idx].axhline(0, color='black', linewidth=0.8)
 
     if idx==0:
@@ -345,7 +345,7 @@ def create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, 
         pdf3.fill_PDF3(fig6, fig7, fig8, fig9)
         fig_p3 = pdf3.fig
 
-        output_path = f'C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/{os.path.splitext(dict_annotation['name'])[0]}_summary.pdf'
+        output_path = f"C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/{os.path.splitext(dict_annotation['name'])[0]}_summary.pdf"
 
         with PdfPages(output_path) as pdf:
                 pdf.savefig(fig_p1, dpi=300, bbox_inches="tight")  # Page 1
@@ -406,7 +406,7 @@ def plot_barplot2_per_protocol(data_s, AX,idx,  p, subplots_n):
         error_kw=dict(linewidth=0.6)
     )
     AX[idx].set_xticks(x)
-    AX[idx].set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
+    AX[idx].set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}")
     AX[idx].axhline(0, color='black', linewidth=0.8)
     
     if idx==0:
@@ -456,7 +456,7 @@ def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
         pdf2.fill_PDF3(fig2, fig3)
         fig_p2 = pdf2.fig
 
-        output_path = f'C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/GROUP_summary.pdf'
+        output_path = f"C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/GROUP_summary.pdf"
 
         with PdfPages(output_path) as pdf:
                 pdf.savefig(fig_p1, dpi=300, bbox_inches="tight")  # Page 1
