@@ -132,3 +132,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 src/physion/acquisition/protocols/movies/NDNF-protocol-pre2025/movie.wmv 
+src/physion/acquisition/protocols/movies/NDNF-protocol-pre2025/movie.wmv 
