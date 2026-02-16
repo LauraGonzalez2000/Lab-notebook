@@ -5,7 +5,7 @@
 import sys, os
 import matplotlib.pyplot as plt
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data
 from physion.utils import plot_tools as pt
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
@@ -73,7 +73,7 @@ def generate_input_data(Resp_ROI_dict, prot1, prot2, categories=("Positive", "NS
     return input_data
 
 #%%
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -101,15 +101,15 @@ print(Resp_ROI_dict)
 #prot1 = "static-patch"
 #prot2 = "drifting-gratings"
 #--------------------------------
-prot1="drifting-gratings"
-prot2="Natural-Images-4-repeats"
+#prot1="drifting-gratings"
+#prot2="Natural-Images-4-repeats"
 #---------------------------------
-#prot1="Natural-Images-4-repeats"
-#prot2="static-patch"
+prot1="Natural-Images-4-repeats"
+prot2="static-patch"
 
 input_data = generate_input_data(Resp_ROI_dict, prot1, prot2)
 
-colors = ["red", "grey", "green"]
+colors = ["#3b4cc0", "#bdbbbb", "#b40426"]
 src_label_override=["Negative", 'NS', 'Positive']
 dst_label_override=["Negative_", 'NS_', 'Positive_']
 
@@ -117,12 +117,13 @@ ax = alluvial.plot(input_data,
                    colors = colors,
                    src_label_override = src_label_override,
                    dst_label_override = dst_label_override, 
-                   v_gap_frac=0.08)
+                   h_gap_frac=0.03,
+                   v_gap_frac=0.2)
 
 fig = ax.get_figure()
 fig.set_size_inches(5,5)
-ax.text(0.1, 0, prot1, ha="center", va="top", transform=ax.transAxes)
-ax.text(0.9, 0, prot2, ha="center", va="top", transform=ax.transAxes)
+ax.text(0.1, -0.2, prot1, ha="center", va="top", transform=ax.transAxes)
+ax.text(0.9, -0.2, prot2, ha="center", va="top", transform=ax.transAxes)
 plt.show()
 
 #%% # CHECK VALUES -> OK

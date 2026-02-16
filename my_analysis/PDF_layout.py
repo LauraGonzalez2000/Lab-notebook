@@ -360,6 +360,87 @@ class PDF4:
             elif key=='Center':
                 self.AXs[key].imshow(image7)
 
+
+class PDF_ori_tuning: 
+    def __init__(self, structure_dict=None, debug=False):
+        if structure_dict is None:
+            structure_dict = {}
+
+        self.debug = debug
+
+        # --- Create A4 figure (in inches)
+        self.fig = plt.figure(figsize=(8.27, 11.69))
+        self.AXs = {}
+
+        # --- Define panels using inch-based coordinates
+        # Format: X0, Y0, DX, DY (in inches)
+        self.AXs['Notes']                       = self.create_panel([0.5, 0.5, 7, 1], 'Notes', hide_axis=True)
+        self.AXs['Traces']                      = self.create_panel([0.5, 1, 7, 2.5], 'Traces', hide_axis=True)
+        self.AXs['Variation dFoF']              = self.create_panel([0.5, 3.5, 4, 5], 'Variation dFoF')
+        self.AXs['Responsiveness vs angle']     = self.create_panel([4.5, 3.5, 4, 5], 'Responsiveness vs angle')
+        self.AXs['Responsiveness per contrast'] = self.create_panel([4.5, 7, 5, 1.5], 'Responsiveness per contrast')
+        self.AXs['Selectivity']                 = self.create_panel([0.5, 7, 5, 1.5], 'Selectivity')
+
+        self.AXs['Tuning curve']                = self.create_panel([0.5, 9, 5, 1.5], 'Tuning curve')
+        plt.tight_layout()
+
+    def create_panel(self, coords_in_inches, title=None, hide_axis=False):
+        """
+        coords_in_inches: [x0, y0, dx, dy] in inches
+                          left-to-right, top-to-bottom (A4 layout convention)
+        """
+        fig_w, fig_h = self.fig.get_size_inches()
+        x0, y0, dx, dy = coords_in_inches
+
+        # Convert to bottom-up and normalized coordinates
+        y0 = fig_h - y0 - dy
+        rect_norm = [x0 / fig_w, y0 / fig_h, dx / fig_w, dy / fig_h]
+
+        ax = self.fig.add_axes(rect_norm)
+        if title:
+            ax.set_title(title, loc='left', pad=2, fontsize=8)
+        if hide_axis:
+            ax.axis('off')
+
+        return ax
+    
+    def fill_PDF(self, 
+                 traces, 
+                 vdFoF, 
+                 resp_ang, 
+                 resp_con, 
+                 selectivity,
+                 tun_curve): 
+        
+        for key in self.AXs:
+            self.AXs[key].axis('off')
+
+            if key=="Notes": 
+                self.AXs[key].axis('off')
+                txt = "Protocol Orientations and Contrasts "
+                self.AXs[key].text(0.1, 0.9, txt, va='top', ha='left', fontsize=10, wrap=True)
+
+
+            elif key=='Traces':
+                self.AXs[key].imshow(traces)
+            
+            elif key=='Variation dFoF':
+                self.AXs[key].imshow(vdFoF)
+                
+            elif key=='Responsiveness vs angle':
+                self.AXs[key].imshow(resp_ang)
+
+            elif key=='Responsiveness per contrast':
+                self.AXs[key].imshow(resp_con)
+            
+            elif key=='Selectivity':
+                self.AXs[key].imshow(selectivity)
+
+            elif key=='Tuning curve':
+                self.AXs[key].imshow(tun_curve)
+            
+
+
 class PDF_angle_contrast:
 
     def __init__(self, structure_dict=None, debug=False):
@@ -377,8 +458,10 @@ class PDF_angle_contrast:
         self.AXs['Notes']                  = self.create_panel([0.5, 0.5, 7, 1], 'Notes', hide_axis=True)
         self.AXs['Traces']                 = self.create_panel([0.7, 1, 7, 2.5], 'Traces', hide_axis=True)
         self.AXs['Variation dFoF']         = self.create_panel([0.5, 3, 4, 2], 'Variation dFoF')
-        self.AXs['Responsiveness roi']     = self.create_panel([4.5, 3, 1.5, 1.5], 'Responsiveness roi')
-        self.AXs['Responsiveness session'] = self.create_panel([6.5, 3, 1.5, 1.5], 'Responsiveness session')
+        self.AXs['Responsiveness vs angle']= self.create_panel([4.5, 3.5, 4, 5], 'Responsiveness vs angle')
+
+        #self.AXs['Responsiveness roi']     = self.create_panel([4.5, 3, 1.5, 1.5], 'Responsiveness roi')
+        #self.AXs['Responsiveness session'] = self.create_panel([6.5, 3, 1.5, 1.5], 'Responsiveness session')
         
 
         plt.tight_layout()
@@ -406,8 +489,7 @@ class PDF_angle_contrast:
     def fill_PDF(self, 
                  image1, 
                  image2, 
-                 image3, 
-                 image4): 
+                 image3): 
         
         for key in self.AXs:
             self.AXs[key].axis('off')
@@ -424,9 +506,6 @@ class PDF_angle_contrast:
             elif key=='Variation dFoF':
                 self.AXs[key].imshow(image2)
                 
-            elif key=='Responsiveness roi':
+            elif key=='Responsiveness vs angle':
                 self.AXs[key].imshow(image3)
-
-            elif key=='Responsiveness session':
-                self.AXs[key].imshow(image4)
           

@@ -3,6 +3,8 @@ from collections import Counter, defaultdict, OrderedDict
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib import colormaps
+from matplotlib.colors import LinearSegmentedColormap
+
 
 
 def plot(input_data, *args, **kwargs):
@@ -192,65 +194,93 @@ class AlluvialTool:
                         dst_label_rect,
                     ]
         return alluvial_fan
-
+    
     def plot(self, figsize=(10, 15), alpha=0.5, **kwargs):
-        colors = self.get_color_array(**kwargs)
+        band_colors = self.get_color_array(**kwargs)
         fig, ax = plt.subplots(figsize=figsize)
+
         for ind, vein_items in enumerate(self.alluvial_fan.values()):
-            patches = [Polygon(item, facecolor=colors[ind], alpha=alpha) for item in vein_items]
-            for patch in patches:
-                ax.add_patch(patch)
+
+            left_color, right_color = band_colors[ind]
+
+            for poly in vein_items:
+
+                xmin, ymin = np.min(poly, axis=0)
+                xmax, ymax = np.max(poly, axis=0)
+
+                width = xmax - xmin
+
+                # Heuristic: small width = side rectangle
+                if width < 0.05:   # <-- adjust threshold if needed
+
+                    # Determine if left or right by x-position
+                    if xmin < 0.5:   # left column
+                        color = left_color
+                    else:            # right column
+                        color = right_color
+
+                    patch = Polygon(
+                        poly,
+                        facecolor=color,
+                        edgecolor='none',
+                        alpha=alpha
+                    )
+                    ax.add_patch(patch)
+
+                else:
+                    # This is the flowing band → apply gradient
+                    band_patch = Polygon(poly, facecolor='none', edgecolor='none')
+                    ax.add_patch(band_patch)
+
+                    gradient = np.linspace(0, 1, 256)
+                    gradient = np.vstack((gradient, gradient))
+
+                    cmap = LinearSegmentedColormap.from_list(
+                        'band_gradient',
+                        [left_color, right_color]
+                    )
+
+                    im = ax.imshow(
+                        gradient,
+                        aspect='auto',
+                        cmap=cmap,
+                        extent=[xmin, xmax, ymin, ymax],
+                        alpha=alpha,
+                        origin='lower'
+                    )
+
+                    im.set_clip_path(band_patch)
+
+
         self.auto_label_veins(**kwargs)
         self.label_sides(**kwargs)
         ax.autoscale()
+
         return ax
 
-    def get_color_array(self, colors=None, rand_seed=1, cmap=None, alpha=0.5, **kwargs):
+    
+    def get_color_array(self, category_colors=None, **kwargs):
         _ = kwargs
 
-        if rand_seed is not None:
-            np.random.seed(rand_seed)
+        if category_colors is None:
+            category_colors = {
+                "Negative": '#3b4cc0',
+                "NS": '#bdbbbb',
+                "Positive": '#b40426',
+                "Negative_": '#3b4cc0',
+                "NS_": '#bdbbbb',
+                "Positive_": '#b40426',
+            }
 
-        cmap = cmap if cmap is not None else colormaps['hsv']
+        band_colors = []
 
-        # --- assign colors to src and dst groups ---
-        src_items = self.src_group
-        dst_items = self.dst_group
-
-        src_colors = {
-            item: cmap(v) for item, v in zip(src_items, np.random.rand(len(src_items)))
-        }
-        dst_colors = {
-            item: cmap(v) for item, v in zip(dst_items, np.random.rand(len(dst_items)))
-        }
-
-        # --- blend colors for each polygon ---
-        polygon_colors = []
         for a_item, b_item in self.alluvial_fan:
-            c_src = np.array(src_colors[a_item])
-            c_dst = np.array(dst_colors[b_item])
-            blended = (1 - alpha) * c_src + alpha * c_dst
-            polygon_colors.append(blended)
+            left_color = category_colors[a_item]
+            right_color = category_colors[b_item]
+            band_colors.append((left_color, right_color))
 
-        return np.array(polygon_colors)
-
-    '''
-    def get_color_array(self, colors=None, color_side=0, rand_seed=1, cmap=None, **kwargs):
-        _ = kwargs
-        color_items = self.dst_group if color_side else self.src_group
-        lci = len(color_items)
-        if rand_seed is not None:
-            np.random.seed(rand_seed)
-        cmap = cmap if cmap is not None else colormaps['hsv']
-        color_array = colors if colors is not None else [
-            cmap(item) for ind, item in enumerate(np.random.rand(lci))]
-        ind_dic = {item: ind for ind, item in enumerate(color_items)}
-        polygon_colors = []
-        for a_item, b_item, in self.alluvial_fan:
-            item = b_item if color_side else a_item
-            polygon_colors += [color_array[ind_dic[item]]]
-        return np.array(polygon_colors)
-    '''
+        return band_colors
+    
     def get_vein_label_lengths(self):
         item_text_len = max([len(it) for it in self.item_width_dict], default=0)
         width_text_len = max([len(str(w)) for w in self.item_width_dict.values()], default=0)

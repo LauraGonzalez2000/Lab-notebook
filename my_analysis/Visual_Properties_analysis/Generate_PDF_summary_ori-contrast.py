@@ -2,8 +2,9 @@
 # # Generate PNG summary
 
 #%%
-import os, sys
+import os, sys, tempfile
 import numpy as np
+
 
 sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.utils import plot_tools as pt
@@ -14,10 +15,17 @@ from physion.dataviz.raw import plot as plot_raw
 from physion.analysis.episodes.build import EpisodeData
 from physion.analysis.episodes.trial_statistics import pre_post_statistics
 
+#orientation tunning
+from physion.analysis.protocols.orientation_tuning import plot_orientation_tuning_curve, \
+                                                          plot_selectivity, \
+                                                          plot_responsiveness
+
 from scipy import stats
 import random
 sys.path += ['..']
-from PDF_layout import PDF, PDF2, PDF3, PDF_angle_contrast
+from Orientation_Tuning import compute_tunings2
+
+from PDF_layout import PDF, PDF2, PDF3, PDF_angle_contrast, PDF_ori_tuning
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import random
@@ -323,7 +331,7 @@ def plot_protocol_ddFoF(ep, AX, idx, protocol="", subplots_n=16):
         AX[0].set_ylabel('variation dFoF')
 
 ### GENERATE FINAL FIGURES ###
-def generate_figures(data_s, cell_type='nan', subplots_n=16):
+def generate_figures(data_s, subplots_n=16):
     start_time = time.time()
 
     for data in data_s:
@@ -395,12 +403,12 @@ def generate_figures(data_s, cell_type='nan', subplots_n=16):
         fig9 = figure_to_array(fig9)
         fig10 = figure_to_array(fig10)
 
-        create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9, fig10, cell_type)
+        #create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9, fig10, cell_type)
 
     elapsed = time.time() - start_time
     print(f"Execution time: {elapsed:.2f} seconds")
         
-    return 0    
+    return dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9, fig10    
 
 def create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9, fig10, cell_type):
     try: 
@@ -767,7 +775,7 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
     AX.set_xticks(x)
     AX.set_xticklabels(param_values,rotation=90, ha="right")
 
-    AX.set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
+    AX.set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}")
     AX.axhline(0, color='black', linewidth=0.8)
     
     if idx==0:
@@ -775,41 +783,87 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
     
     return 0
 
-def generate_figures_GROUP(data_s, subplots_n):
+def generate_figures_GROUP(data_s, subplots_n, test="angle"):
     start_time = time.time()  
 
     protocols = [p for p in data_s[0].protocols 
                         if (p != 'grey-10min') and (p != 'black-2min') and (p != 'quick-spatial-mapping')]
 
-    fig1, _     = plot_dFoF_of_protocol(data_s=data_s, protocol=protocols[0])
+    fig_traces, _     = plot_dFoF_of_protocol(data_s=data_s, protocol=protocols[0])
     elapsed = time.time() - start_time
     print(f"Fig 1 ok: {elapsed:.2f} seconds")
 
-    fig2, AX2  = pt.figure(axes = (len(protocols),1), ax_scale=(2, 1))
-    fig3, AX3  = pt.figure(axes = (len(protocols),1))
-    fig4, AX4 = pt.figure(axes = (len(protocols),1))
-   
-    for idx, p in enumerate(protocols):
-        plot_barplot2_of_protocol(data_s, AX2, idx, p, subplots_n)
-        plot_responsiveness2_of_protocol(data_s, AX3, idx, p, type='ROI')
-        plot_responsiveness2_of_protocol(data_s, AX4, idx, p, type='means')
+    fig_vdFoF, AX2  = pt.figure(axes = (len(protocols),1), ax_scale=(2, 1))
+    plot_barplot2_of_protocol(data_s, AX2, 0, data_s[0].protocols[0], subplots_n)
+
+    fig_resp_vs_param, AX3 = pt.figure(axes = (1,1),figsize=(2,2), ax_scale=(2, 5))
+    if test == "angle":
+        final_pos_, final_neg_, final_ns_ = plot_responsiveness2_of_protocol_(data_s, idx, data_s[0].protocols[0], type='ROI', type_ = "contrast")
+    elif test== "contrast":
+        final_pos_, final_neg_, final_ns_ = plot_responsiveness2_of_protocol_(data_s, idx, data_s[0].protocols[0], type='ROI', type_ = "angle")
+    ep = EpisodeData(data_s[0], protocol_name=data_s[0].protocols[0], quantities=['dFoF'])
+    x = ep.varied_parameters[test]
+    plot_resp_vs_param(x=x, AX=AX3, pos = final_pos_, neg = final_neg_, ns = final_ns_, test=test)
+
+    fig1 = figure_to_array(fig_traces)
+    fig2 = figure_to_array(fig_vdFoF)
+    fig3 = figure_to_array(fig_resp_vs_param)
+    print(f"Fig 2-3 ok: {elapsed:.2f} seconds")
+
+    if test=='contrast':
+        return fig1, fig2, fig3
+
+    stat_test_props = dict(interval_pre=[-1.,0],                                   
+                       interval_post=[1.,2.],                                   
+                       test='ttest',                                            
+                       sign='positive')
+    
+    response_significance_threshold=0.05
+    
+    compute_tunings2(data_s = data_s, 
+                    stat_test_props=stat_test_props, 
+                    response_significance_threshold=response_significance_threshold)
+    
+
+    fig_resp_per_param, AX4 = plot_responsiveness(['WT_contrast-1.0', 'WT_contrast-0.5'],
+                                    average_by='ROIs', #issue !!  #not average by subject
+                                    path=tempfile.tempdir, 
+                                    fig_args={'figsize':  (2,1.), 
+                                              'ax_scale': (1.,1.)})
+    
+
+    fig_selectivity, AX5 = plot_selectivity(['WT_contrast-1.0', 'WT_contrast-0.5'],
+                                 average_by='ROIs',
+                                 #using='fit',
+                                 path=tempfile.tempdir)
+    
+    fig_tuning_curve, AX6 = plot_orientation_tuning_curve(['WT_contrast-1.0', 'WT_contrast-0.5'],
+                                              average_by='ROIs',
+                                              path=tempfile.tempdir)
         
     elapsed = time.time() - start_time
-    print(f"Fig 2-3-4 ok: {elapsed:.2f} seconds")
+    print(f"Fig 4-5-6 ok: {elapsed:.2f} seconds")
 
-    fig1 = figure_to_array(fig1)
-    fig2 = figure_to_array(fig2)
-    fig3 = figure_to_array(fig3)
-    fig4 = figure_to_array(fig4)
+    
+    fig4 = figure_to_array(fig_resp_per_param)
+    fig5 = figure_to_array(fig_selectivity)
+    fig6 = figure_to_array(fig_tuning_curve)
 
     elapsed = time.time() - start_time
     print(f"Total time: {elapsed:.2f} seconds")
-    return fig1, fig2, fig3, fig4
 
-def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
+    if test=='angle':
+        return fig1, fig2, fig3, fig4, fig5, fig6
+    
+def create_group_PDF(fig1, fig2, fig3, fig4=None, fig5=None, fig6=None, cell_type='', test='angle'):
     try: 
-        pdf1 = PDF_angle_contrast()
-        pdf1.fill_PDF(fig1, fig2, fig3, fig4)
+        if test=="angle":
+            pdf1 = PDF_ori_tuning() #PDF_angle_contrast()
+            pdf1.fill_PDF(fig1, fig2, fig3, fig4, fig5, fig6)
+        if test=="contrast":
+            pdf1 = PDF_angle_contrast()
+            pdf1.fill_PDF(fig1, fig2, fig3)
+
         fig_p1 = pdf1.fig
         output_path = f"C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/GROUP_summary.pdf"
         with PdfPages(output_path) as pdf:
@@ -821,84 +875,6 @@ def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
 
     return 0
 
-##################################################################################################################
-##################################################################################################################
-##################################################################################################################
-#%% [markdown]
-# ## NDNF CRE BATCH 2
-##################################################################################################################
-######################################## 8 ORIENTATIONS 2 contrasts ##############################################
-##################################################################################################################
-#%% LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_orientations')
-SESSIONS = scan_folder_for_NWBfiles(datafolder)
-SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
-
-dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
-                'method_for_F0': 'sliding_percentile',
-                'sliding_window': 300.,
-                'percentile': 10.,
-                'neuropil_correction_factor': 0.8}
-data_s_ori = []
-for idx, filename in enumerate(SESSIONS['files']):
-    data = Data(filename, verbose=False)
-    data.build_dFoF(**dFoF_options)
-    data.build_running_speed()
-    data.build_facemotion()
-    data.build_pupil_diameter()
-    data_s_ori.append(data)
-
-#%% [markdown]
-## All individual files
-#%%
-#generate_figures(data_s, cell_type='NDNF', subplots_n=16)
-#%% [mardown]
-## GROUPED ANALYSIS
-#%% 8 ori 2 contrasts
-
-#%%
-protocol = 'ff-gratings-8orientation-2contrasts-15repeats'
-fig1, _  = plot_dFoF_of_protocol(data_s=data_s_ori, protocol=protocol)
-
-
-#%%
-fig1, fig2, fig3, fig4 = generate_figures_GROUP(data_s_ori, subplots_n=16)
-create_group_PDF(fig1, fig2, fig3, fig4, 'NDNF')
-
-#%% ##############################################################################################################
-######################################## 2 ORIENTATIONS 8 contrasts ##############################################
-##################################################################################################################
-#%% LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch2','NWBs_contrasts')
-SESSIONS = scan_folder_for_NWBfiles(datafolder)
-SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
-
-dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
-                'method_for_F0': 'sliding_percentile',
-                'sliding_window': 300.,
-                'percentile': 10.,
-                'neuropil_correction_factor': 0.8}
-
-data_s_con = []
-for idx, filename in enumerate(SESSIONS['files']):
-    data = Data(filename, verbose=False)
-    data.build_dFoF(**dFoF_options)
-    data.build_running_speed()
-    data.build_facemotion()
-    data.build_pupil_diameter()
-    data_s_con.append(data)
-
-#%% [markdown]
-## All individual files
-#%%
-#generate_figures(data_s, cell_type='NDNF', subplots_n=16)
-#%% [mardown]
-## GROUPED ANALYSIS
-#%%
-fig1, fig2, fig3, fig4 = generate_figures_GROUP(data_s_con, subplots_n=16)
-create_group_PDF(fig1, fig2, fig3, fig4, 'NDNF')
-
-#%%
 def plot_responsiveness2_of_protocol_(data_s, idx, p, type='means', type_ = "contrast"):
 
     nROIs = 0
@@ -1003,36 +979,94 @@ def plot_responsiveness2_of_protocol_(data_s, idx, p, type='means', type_ = "con
 
     return final_pos_, final_neg_, final_ns_
 
-def plot_(x, final_pos_, final_neg_, final_ns_, type = "angle"):
-    fig, AX = pt.figure(axes = (1,1),figsize=(2,2), ax_scale=(2, 5))
+def plot_resp_vs_param(x, AX, pos, neg, ns, test = "angle"):
     
-    pt.plot(x, final_pos_, ax=AX, color = "green")
+    pt.plot(x, pos, ax=AX, color = "green")
+    pt.plot(x, neg, ax=AX, color="red")
+    pt.plot(x, ns, ax=AX, color = "grey")
+
     pt.set_plot(ax = AX, 
                 ylabel='Responsiveness (%)', 
                 yticks=np.arange(0, 105, 10),
-                xlabel=type, 
+                xlabel=test, 
                 fontsize = 15)
     AX.set_xticks(x)
-    AX.set_xticklabels([f'{xi:.2f}' for xi in x], rotation=90, ha="right")
+    AX.set_xticklabels([f"{xi:.1f}" for xi in x], rotation=90, ha="right")
     AX.set_ylim(0, 100)
-  
-    pt.plot(x, final_neg_, ax=AX, color="red")
-    pt.plot(x, final_ns_, ax=AX, color = "grey")
-  
+    
     return 0
+
+##################################################################################################################
+##################################################################################################################
+##################################################################################################################
+#%% [markdown]
+##################################################################################################################
+######################################## 8 ORIENTATIONS 2 contrasts ##############################################
+##################################################################################################################
+#%% LOAD DATA
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','Ori-contrasts', 'NDNF-Cre', 'NWBs_orientations-test')
+SESSIONS = scan_folder_for_NWBfiles(datafolder)
+SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
+
+dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
+                'method_for_F0': 'sliding_percentile',
+                'sliding_window': 300.,
+                'percentile': 10.,
+                'neuropil_correction_factor': 0.8}
+data_s_ori = []
+for idx, filename in enumerate(SESSIONS['files']):
+    data = Data(filename, verbose=False)
+    data.build_dFoF(**dFoF_options)
+    data.build_running_speed()
+    data.build_facemotion()
+    data.build_pupil_diameter()
+    data_s_ori.append(data)
+
+#%% [markdown]
+## All individual files
+#%%
+#generate_figures(data_s, cell_type='NDNF', subplots_n=16)
+#%% [mardown]
+## GROUPED ANALYSIS
 
 #%%
 # 8 orientations 2 contrasts
-type = "angle"
-final_pos_, final_neg_, final_ns_ = plot_responsiveness2_of_protocol_(data_s_ori, idx, data_s_ori[0].protocols[0], type='ROI', type_ = "contrast")
-ep = EpisodeData(data_s_ori[0], protocol_name=data_s_ori[0].protocols[0], quantities=['dFoF'])
-x = ep.varied_parameters[type]
-plot_(x, final_pos_, final_neg_, final_ns_, type=type)
+test = "angle"
+fig1, fig2, fig3, fig4, fig5, fig6 = generate_figures_GROUP(data_s_ori, subplots_n=16, test=test)
+create_group_PDF(fig1, fig2, fig3, fig4, fig5, fig6, 'NDNF', test=test)
 
+#%% ##############################################################################################################
+######################################## 2 ORIENTATIONS 8 contrasts ##############################################
+##################################################################################################################
+#%% LOAD DATA
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','Ori-contrasts', 'NDNF-Cre', 'NWBs_contrasts-test')
+SESSIONS = scan_folder_for_NWBfiles(datafolder)
+SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
+
+dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
+                'method_for_F0': 'sliding_percentile',
+                'sliding_window': 300.,
+                'percentile': 10.,
+                'neuropil_correction_factor': 0.8}
+
+data_s_con = []
+for idx, filename in enumerate(SESSIONS['files']):
+    data = Data(filename, verbose=False)
+    data.build_dFoF(**dFoF_options)
+    data.build_running_speed()
+    data.build_facemotion()
+    data.build_pupil_diameter()
+    data_s_con.append(data)
+
+test = "contrast"
+
+#%% [markdown]
+## All individual files
 #%%
-# 8 contrasts 2 orientations
-type = "contrast"
-final_pos_, final_neg_, final_ns_ = plot_responsiveness2_of_protocol_(data_s_con, AX5, idx, data_s_con[0].protocols[0], type='ROI', type_ = "angle")
-ep = EpisodeData(data_s_con[0], protocol_name=data_s_con[0].protocols[0], quantities=['dFoF'])
-x = ep.varied_parameters[type]
-plot_(x, final_pos_, final_neg_, final_ns_, type = type)
+dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9, fig10 = generate_figures(data_s_con, subplots_n=16)
+create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9, fig10, cell_type='NDNF')
+#%% [mardown]
+## GROUPED ANALYSIS
+#%%
+fig1, fig2, fig3 = generate_figures_GROUP(data_s_con, subplots_n=16, test=test)
+create_group_PDF(fig1, fig2, fig3, 'NDNF', test=test)

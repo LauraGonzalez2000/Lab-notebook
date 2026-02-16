@@ -368,24 +368,24 @@ def plot_dFoF_of_protocol(data_s,
         AX[1][0].set_ylabel("C = 1 \n dFoF")
         # Label columns
         for o_idx, orientation in enumerate(orientations):
-            AX[1][o_idx].set_xlabel(f"Time (s) \n a = {orientation:.0f}°")
+            AX[1][o_idx].set_xlabel(f"Time (s) \n a = {orientation:.1f}°")
 
     # annotate session or ROI info
     if roiIndex is None:
         if mode == "single":
             AX[1][-1].annotate('single session: %s ,   n=%i ROIs' %
                                (data_s[0].filename.replace('.nwb',''), data_s[0].nROIs),
-                               (-3, -1), xycoords='axes fraction')
+                               (-3, -1.5), xycoords='axes fraction')
         else:
             AX[1][-1].annotate('average over %i sessions ,   mean$\\pm$SEM across sessions' % len(data_s),
-                               (-3, -1), xycoords='axes fraction')
+                               (-3, -1.5), xycoords='axes fraction')
     else:
         if mode == "single":
             AX[1][-1].annotate('roi #%i ,   rec: %s' % (1+roiIndex, data_s[0].filename.replace('.nwb','')),
-                               (-3, -1), xycoords='axes fraction', fontsize=7)
+                               (-3, -1.5), xycoords='axes fraction', fontsize=7)
         else:
             AX[1][-1].annotate('roi #%i , average over %i sessions' % (1+roiIndex, len(data_s)),
-                               (-3, -1), xycoords='axes fraction', fontsize=7)
+                               (-3, -1.5), xycoords='axes fraction', fontsize=7)
 
     return fig, AX
 

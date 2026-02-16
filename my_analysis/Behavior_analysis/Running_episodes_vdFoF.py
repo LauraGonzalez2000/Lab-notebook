@@ -247,6 +247,41 @@ def plot_trace_vdFoF(traces_act, traces_rest, aligned=False):
 
     return 0
 
+def plot_trace_loco(traces_act, traces_rest):
+
+    fig, ax = plt.subplots(1,1, figsize=(3, 3))
+
+    mean_act = np.nanmean(traces_act, axis=(0))
+    sem_act  = np.nanstd(traces_act, axis=(0)) / np.sqrt(np.sum(~np.isnan(traces_act), axis=(0)))
+
+    mean_rest = np.nanmean(traces_rest, axis=(0))
+    sem_rest  = np.nanstd(traces_rest, axis=(0)) / np.sqrt(np.sum(~np.isnan(traces_rest), axis=(0)))
+
+    # Plot traces +- SEM
+    ax.plot(episodes.t, mean_act, color="greenyellow", label="Active")
+    ax.plot(episodes.t, mean_rest, color="darkolivegreen", label="Rest")
+    ax.fill_between(episodes.t, mean_act - sem_act, mean_act + sem_act,
+                    color="greenyellow", alpha=0.2)
+    ax.fill_between(episodes.t, mean_rest - sem_rest, mean_rest + sem_rest,
+                    color="darkolivegreen", alpha=0.2)
+
+    # Formatting
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Running speed (cm/s)")
+    ax.set_xticks(np.arange(0, episodes.t.max() + 1, 1))
+    ax.fill_between(np.array([0, episodes.time_duration[0]]), y1=7, y2=0,
+                    color="grey", alpha=0.25)
+    
+    ax.fill_between(np.array([-episodes.time_duration[0]/5, 0]), y1=6.8, y2=0,
+                    color="orange", alpha=0.25)
+    ax.fill_between(np.array([episodes.time_duration[0] - episodes.time_duration[0]/5,
+                              episodes.time_duration[0]]), y1=6.8, y2=0,
+                    color="orange", alpha=0.25)
+    
+    ax.axhline(y=0, linewidth=0.5, linestyle='--')
+
+    return 0
+
 def calc_diff_baseline( trace_act, trace_rest):
 
     time_epi = int(episodes.time_duration[0])
@@ -324,6 +359,8 @@ def get_diffs_baseline(traces_act_s, traces_rest_s):
             diffs_baseline.append(temp)
 
     return diffs_baseline
+
+
 ###################################################################################################################
 #%% Load Data
 
@@ -473,18 +510,21 @@ AX[1].set_ylim([-4,10])
 #%% ################################################################
 ###################### REST AND ACTIVE #############################
 ####################################################################
-protocol = "Natural-Images-4-repeats"
+#protocol = "static-patch"
 #protocol = "drifting-gratings"
+#protocol = "Natural-Images-4-repeats"
 #protocol = 'moving-dots' 
 #protocol = 'random-dots'
-#protocol = "static-patch"
-#protocol = "looming-stim"
+protocol = "looming-stim"
 
 traces_act_s, traces_rest_s, diffs_act_s, diffs_rest_s = [], [], [], []
 traces_act_resp_s, traces_rest_resp_s, traces_act_pos_s, traces_rest_pos_s, traces_act_neg_s, traces_rest_neg_s = [], [], [], [], [], []
 diffs_act_resp_s, diffs_rest_resp_s = [], []
 diffs_act_pos_s, diffs_rest_pos_s = [], []
 diffs_act_neg_s, diffs_rest_neg_s = [], []
+
+traces_loco_act_s = []
+traces_loco_rest_s = []
 
 for index in range(len(SESSIONS['files'])):
     filename = SESSIONS['files'][index]
@@ -548,6 +588,12 @@ for index in range(len(SESSIONS['files'])):
     traces_act_neg_s.append(traces_act_neg)
     traces_rest_neg_s.append(traces_rest_neg)
 
+    traces_loco_act = np.nanmean(episodes.running_speed[HMcond], axis=0)
+    traces_loco_rest = np.nanmean(episodes.running_speed[~HMcond], axis=0)
+
+    traces_loco_act_s.append(traces_loco_act)
+    traces_loco_rest_s.append(traces_loco_rest)
+
 
 
 #%% ALL CELLS 
@@ -580,6 +626,8 @@ boxplot_dict = {"title": "Amplitude peak Act vs Rest",
                 "figsize": (1,3)}
 
 plot_boxplot(boxplot_dict)
+
+plot_trace_loco(traces_loco_act_s, traces_loco_rest_s)
 
 #%% ALL RESPONSIVE CELLS
 temp_act_resp = [np.nanmean(traces_act_resp_s[i], axis=0 ) for i in range(len(traces_act_resp_s))]

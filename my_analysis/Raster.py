@@ -97,6 +97,7 @@ def plot_evoked_pattern(EP_s,
                          right=4,
                          left=0.3,
                          top=(4.5 if with_stim_inset else 1))
+    axR = np.atleast_1d(axR)
     
     resp_s = []
     for file_i in range(len(EP_s)):  #for each file
@@ -138,7 +139,9 @@ def plot_evoked_pattern(EP_s,
     param_values = ep_s[0].varied_parameters[varied_params]
     order_mantained = []
 
+    print("ncond : ", n_cond)
     for column in range(n_cond):
+        print(" Column : ", column) 
         if behavior_split==False:
             stim_idx = column
             axR[column].set_title(f"STIM {stim_idx+1}", y=1.3, fontsize=15)
@@ -148,16 +151,17 @@ def plot_evoked_pattern(EP_s,
             state = "ACT" if column % 2 == 0 else "REST"
             axR[column].set_title(f"STIM {stim_idx+1} {state}", y=1.3, fontsize=15)
         
-        print(" Column : ", column, "stim idx", stim_idx) 
+        print("stim idx", stim_idx)
         # STIM INSET ##################################################################
-        param = param_values[stim_idx]
-        stim_inset = pt.inset(axR[column], [0.1, 0.8, 0.8, 0.8])
-        cond = ep.find_episode_cond(key=varied_params,value=param)
-        iStim = np.flatnonzero(cond)[0]
-        image =  ep.visual_stim.get_image(iStim)
-        image =  np.rot90(image, k=1)
-        stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
-        stim_inset.axis('off')
+        if with_stim_inset:
+            param = param_values[stim_idx]
+            stim_inset = pt.inset(axR[column], [0.1, 0.8, 0.8, 0.8])
+            cond = ep.find_episode_cond(key=varied_params,value=param)
+            iStim = np.flatnonzero(cond)[0]
+            image =  ep.visual_stim.get_image(iStim)
+            image =  np.rot90(image, k=1)
+            stim_inset.imshow(image, cmap=pt.plt.cm.binary_r,vmin=0, vmax=1)
+            stim_inset.axis('off')
         
         # RASTER ######################################################################
         # mean response for raster
@@ -315,7 +319,7 @@ for index in range(len(SESSIONS['files'])):
 
 #%%
 #protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
-protocols = ["Natural-Images-4-repeats"]
+protocols = ["looming-stim"]
 
 ep_s_ = []
 for protocol in protocols: 
@@ -335,15 +339,15 @@ for p, protocol in enumerate(protocols):
     ep_s = ep_s_[p]
     plot_evoked_pattern(EP_s=ep_s, 
                         quantity='dFoF', 
-                        with_stim_inset=True, 
+                        with_stim_inset=False, 
                         behavior_split=False, 
                         clustering = 'amplitude')
     
-    plot_evoked_pattern(EP_s=ep_s, 
-                        quantity='dFoF', 
-                        with_stim_inset=True, 
-                        behavior_split=True, 
-                        clustering = 'amplitude')
+    #plot_evoked_pattern(EP_s=ep_s, 
+    #                    quantity='dFoF', 
+    #                    with_stim_inset=False, 
+    #                    behavior_split=True, 
+    #                    clustering = 'amplitude')
 #######################################################################################################################
 #######################################################################################################################
 

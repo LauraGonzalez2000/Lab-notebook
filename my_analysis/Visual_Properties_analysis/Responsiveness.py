@@ -495,7 +495,7 @@ for idx, filename in enumerate(SESSIONS['files']):
 
 #%%
 ################ PIE CHARTS RESPONSIVENESS PER PROTOCOL ###################################################
-protocols = ["static-patch", "drifting-gratings", "Natural-Images-4-repeats"]
+#protocols = ["static-patch", "drifting-gratings", "Natural-Images-4-repeats"]
 #protocols = ["static-patch", "drifting-gratings"]
 #protocols = ['static-patch', 
 #             'drifting-gratings', 
@@ -511,7 +511,9 @@ protocols = ["static-patch", "drifting-gratings", "Natural-Images-4-repeats"]
 #             'Natural-Images-4-repeats', 
 #             'moving-dots']
 
-plot_responsiveness_per_protocol(data_s, protocols=protocols, type='means', behavior_split=False)
+protocols = ["moving-dots"]
+
+plot_responsiveness_per_protocol(data_s, protocols=protocols, type='means', behavior_split=True)
 
 #%%
 ############################################################################################################
