@@ -109,14 +109,14 @@ def compute_tuning_response_per_cells(data, Episodes,
     cond = Episodes.find_episode_cond(key='contrast', 
                                         value=contrast) &\
                                         filtering_cond
-    summary = Episodes.pre_post_statistics(stat_test_props,
-                                                episode_cond=cond,
-                                                repetition_keys=['repeat', 'contrast'],
-                                                response_args=dict(quantity=quantity),
-                                                response_significance_threshold=response_significance_threshold,
-                                                multiple_comparison_correction=True,
-                                                loop_over_cells=True,
-                                                verbose=verbose)
+    summary = Episodes.pre_post_statistics(episode_cond = cond,
+                                           response_args=dict(quantity=quantity),
+                                           response_significance_threshold=response_significance_threshold,
+                                           stat_test_props = stat_test_props,
+                                           repetition_keys=['repeat', 'contrast'],
+                                           multiple_comparison_correction=True,
+                                           loop_over_cells=True,
+                                           verbose=verbose)
         
     # if significant in at least one orientation
     significant = (np.sum(summary['significant'], axis=1)>0)
@@ -245,6 +245,7 @@ def plot_selectivity(keys,
     
             Responses = get_tuning_responses(Tunings,
                                              average_by=average_by)
+            
             Selectivities = compute_selectivities(Responses,
                                                   angles=Tunings[0]['shifted_angle'],
                                                   using=using)
@@ -338,7 +339,10 @@ def plot_responsiveness(keys,
             Tunings = \
                     np.load(os.path.join(path, 'Tunings_%s.npy' % key), 
                             allow_pickle=True)
-    
+            
+            Responses = get_tuning_responses(Tunings,
+                                             average_by=average_by)
+            
             responsive_frac = [Tuning['nROIs_responsive']/Tuning[reference_ROI_number]\
                                for Tuning in Tunings]
 
@@ -350,10 +354,15 @@ def plot_responsiveness(keys,
                 annot = i*'\n'+'%.1f$\\pm$%.1f%%' %\
                          (100*np.mean(responsive_frac), 
                           100*stats.sem(responsive_frac))
+                
                 if average_by=='sessions':
                     annot += ', N=%02d %s, ' % (len(responsive_frac), average_by) + key
-                else:
-                    annot += ', n=%04d %s, ' % (len(responsive_frac), average_by) + key
+
+                elif average_by=="subjects":
+                    annot += ', N=%02d %s, ' % (len(Responses), average_by) + key
+
+                elif average_by=="ROIs":
+                    annot += ', n=%04d %s, ' % (np.sum([Tuning['nROIs_responsive']for Tuning in Tunings]), average_by) + key
                 pt.annotate(ax, annot, (1., 0.9), va='top', color=color)
 
     pt.set_plot(ax, ['left'],
