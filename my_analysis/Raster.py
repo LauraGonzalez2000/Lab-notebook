@@ -93,7 +93,7 @@ def plot_evoked_pattern(EP_s,
 
     ####### initialize figure
     fig, axR = pt.figure(axes=(n_cond,1),
-                         ax_scale=(2, 11),
+                         ax_scale=(2, 15),
                          right=4,
                          left=0.3,
                          top=(4.5 if with_stim_inset else 1))
@@ -268,7 +268,7 @@ def plot_evoked_pattern(EP_s,
         pt.bar_legend(axR[column], 
                       colorbar_inset=dict(rect=[1.1,.1,.04,.8], facecolor=None),
                       colormap = cmap_graywarm_nl, #colormap=pt.binary, #pt.plt.cm.plasma #pt.plt.cm.coolwarm
-                      bar_legend_args={'size':1},
+                      bar_legend_args={},
                       label='$\\Delta$F/F',
                       X=np.arange(vmin, vmax+0.5, 0.5),
                       bounds=[vmin, vmax],
@@ -319,7 +319,8 @@ for index in range(len(SESSIONS['files'])):
 
 #%%
 #protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
-protocols = ["looming-stim"]
+protocols = ["drifting-gratings", "Natural-Images-4-repeats"]
+#protocols = ["drifting-gratings"]
 
 ep_s_ = []
 for protocol in protocols: 
@@ -337,12 +338,13 @@ for protocol in protocols:
 ########################################################################
 for p, protocol in enumerate(protocols):
     ep_s = ep_s_[p]
-    plot_evoked_pattern(EP_s=ep_s, 
+    fig = plot_evoked_pattern(EP_s=ep_s, 
                         quantity='dFoF', 
-                        with_stim_inset=False, 
+                        with_stim_inset=True, 
                         behavior_split=False, 
                         clustering = 'amplitude')
     
+    fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/raster_{p}.svg'))
     #plot_evoked_pattern(EP_s=ep_s, 
     #                    quantity='dFoF', 
     #                    with_stim_inset=False, 
@@ -395,3 +397,68 @@ for p, protocol in enumerate(protocols):
                         quantity='dFoF', 
                         with_stim_inset=True, 
                         behavior_split=True)
+
+
+#%%
+#drifting
+ep = ep_s_[0][0]
+ep.visual_stim
+image =  ep.visual_stim.get_image(0)
+image =  np.rot90(image, k=1)
+print(image)
+
+fig, ax = pt.figure()
+ax.imshow(image, cmap=pt.plt.cm.binary_r, vmin=0, vmax=1)
+
+#%%
+#natural
+ep = ep_s_[1][0]
+ep.visual_stim
+image =  ep.visual_stim.get_image(1)
+image =  np.rot90(image, k=1)
+print(image)
+
+fig, ax = pt.figure()
+ax.imshow(image, cmap=pt.plt.cm.binary_r, vmin=0, vmax=1)
+
+#%%
+for index in range(0,251):
+    #index = 74
+    #print(data.visual_stim.experiment.keys())
+    print(data.visual_stim.experiment['protocol_id'][index])
+    print(index)
+    image = data.visual_stim.get_image(index=index)
+    image =  np.rot90(image, k=1)
+    fig, ax = pt.figure()
+    ax.imshow(image, cmap=pt.plt.cm.binary_r, vmin=0, vmax=1)
+    ax.axis('off')
+    
+    #fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/natural_stim_{index}.svg'))
+
+
+#%%
+
+data = data_s[8]
+#%%
+indexes = []
+for index in range(0,151):
+    if data.visual_stim.experiment['protocol_id'][index]==4: 
+        #if data.visual_stim.experiment['Image-ID'][index]==4:
+            indexes.append(index)
+#%%
+for index in indexes[:10]:
+    print("Image ID", data.visual_stim.experiment['Image-ID'][index])
+    image = data.visual_stim.get_image(index=index)
+    #NIarray = data.visual_stim.experiment['protocol_id'][index].NIarray
+    #print(NIarray)
+    image =  np.rot90(image, k=1)
+    fig, ax = pt.figure()
+    ax.imshow(image, cmap=pt.plt.cm.binary_r, vmin=0, vmax=1)
+    ax.axis('off')
+    fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/stim_natural_{index}.svg'))
+
+#%%
+#np.sum[data.visual_stim.experiment['Image-ID'][index]==3 for index in indexes]
+print("Total natural images : ", len(indexes))
+for i in range(1,6):
+    print("for Image Id ", i, "there is ", np.sum([data.visual_stim.experiment['Image-ID'][index] == i for index in indexes]))

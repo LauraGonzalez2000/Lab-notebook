@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 sys.path += ['../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data
+
 from physion.utils import plot_tools as pt
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.analysis.episodes.build import EpisodeData
@@ -468,7 +469,7 @@ def plot_responsiveness_per_protocol(data_s,  protocols=[''], type='means', beha
             AX[idx*2+1].set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}\n REST")
 
         
-    return 0
+    return fig, AX
 
 #%% Load data
 datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
@@ -496,6 +497,7 @@ for idx, filename in enumerate(SESSIONS['files']):
 #%%
 ################ PIE CHARTS RESPONSIVENESS PER PROTOCOL ###################################################
 #protocols = ["static-patch", "drifting-gratings", "Natural-Images-4-repeats"]
+protocols = ["drifting-gratings", "Natural-Images-4-repeats"]
 #protocols = ["static-patch", "drifting-gratings"]
 #protocols = ['static-patch', 
 #             'drifting-gratings', 
@@ -511,10 +513,10 @@ for idx, filename in enumerate(SESSIONS['files']):
 #             'Natural-Images-4-repeats', 
 #             'moving-dots']
 
-protocols = ["moving-dots"]
+#protocols = ["moving-dots"]
 
-plot_responsiveness_per_protocol(data_s, protocols=protocols, type='means', behavior_split=True)
-
+fig_responsiveness, _ = plot_responsiveness_per_protocol(data_s, protocols=protocols, type='ROI', behavior_split=True)
+fig_responsiveness.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/responsiveness.svg'))
 #%%
 ############################################################################################################
 ############################## PLOT RESPONSIVENESS FOR GIVEN PROTOCOL ######################################

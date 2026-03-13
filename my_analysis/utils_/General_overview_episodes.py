@@ -72,6 +72,9 @@ def compute_high_arousal_cond(episodes,
 
     return cond
 
+
+
+
 def get_trial_average_trace(episodes,
                             quantity='dFoF',
                             roiIndex=None,

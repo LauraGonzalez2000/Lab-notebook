@@ -13,6 +13,8 @@ from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.utils  import plot_tools as pt
 from physion.analysis.episodes.build import EpisodeData
 
+sys.path += ['../']
+from utils_.General_overview_episodes import compute_high_arousal_cond
 import numpy as np
 
 import matplotlib.pylab as plt
@@ -22,66 +24,6 @@ import random
 import sys
 
 #%%
-def compute_high_arousal_cond(episodes, 
-                              pre_stim = 0,
-                              pupil_threshold = 0.29, 
-                              running_speed_threshold = 0.1, 
-                              metric = None):
-    """
-    Calculates wether the episodes are aroused/active or calm/resting.
-
-    Args:
-        episodes (array of Episode): (Episode#, ROI#, dFoF_values (0.5ms sampling rate)).
-        pupil_threshold (float) : The threshold to discriminate calm state and aroused state
-        running_speed_threshold (float): The threshold to discriminate resting state and active state.
-        metric (string) : metric used to split calm/rest and aroused/active states. ("pupil" or "locomotion")
-
-    Returns:
-        np.array : HMcond is True when active/aroused and false when resting/calm
-    """
-    cond = []
-    
-    if metric=="pupil":
-        '''
-        if pupil_threshold is not None:
-            cond = (episodes.pupil_diameter.mean(axis=1)>pupil_threshold)
-        else:
-            print("pupil_threshold not given")
-        '''
-        if pupil_threshold is not None: 
-            start = int(pre_stim*1000)
-            end = int(start + episodes.time_duration[0]*1000)
-            values = episodes.pupil_diameter[:, start:end]  ## check if these boundaries cause problem #1000:3001
-            for value in values: 
-                if (np.mean(value) > pupil_threshold):
-                    cond.append(True)
-                else: 
-                    cond.append(False)
-            cond = np.array(cond) 
-    
-        else: 
-            print("pupil_threshold not given")
-            
-
-
-    if metric=="locomotion":
-        
-        if running_speed_threshold is not None: 
-            start = int(pre_stim*1000)
-            end = int(start + episodes.time_duration[0]*1000)
-            values = episodes.running_speed[:, start:end]  ## check if these boundaries cause problem #1000:3001
-            for value in values: 
-                if (np.mean(value) > running_speed_threshold):
-                    cond.append(True)
-                else: 
-                    cond.append(False)
-            cond = np.array(cond) 
-    
-        else: 
-            print("running_speed_threshold not given")
-
-    return cond
-
 def plot_loco_pupil(data,
                     ax=None,
                     running_speed_threshold=0.1,
@@ -212,7 +154,7 @@ def plot_locomotion(data,
     return fig, AX
 
 #%%
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -275,7 +217,7 @@ for f, filename in enumerate(SESSIONS['files']):
 for i in range(rows*cols-len(SESSIONS['files'])):
     AX[-1][i*(-1) - 1].axis('off')
 
-fig.savefig("C:/Users/laura.gonzalez/Output_expe/In_Vivo/NDNF/Behavior/all_behavior_locomotion_pupil1.png", dpi=300, bbox_inches='tight')
+#fig.savefig("C:/Users/laura.gonzalez/Output_expe/In_Vivo/NDNF/Behavior/all_behavior_locomotion_pupil1.png", dpi=300, bbox_inches='tight')
 
 #%%
 rows = 3
@@ -299,6 +241,6 @@ for f, filename in enumerate(SESSIONS['files']):
 for i in range(rows*cols-len(SESSIONS['files'])):
     AX[-1][i*(-1) - 1].axis('off')
 
-fig.savefig("C:/Users/laura.gonzalez/Output_expe/In_Vivo/NDNF/Behavior/all_behavior_locomotion_pupil2.png", dpi=300, bbox_inches='tight')
+#fig.savefig("C:/Users/laura.gonzalez/Output_expe/In_Vivo/NDNF/Behavior/all_behavior_locomotion_pupil2.png", dpi=300, bbox_inches='tight')
 
 

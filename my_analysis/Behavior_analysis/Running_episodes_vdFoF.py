@@ -8,11 +8,12 @@ import sys, os
 import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
+sys.path += ['../../physion/src'] # add src code directory for physion
 
-sys.path += ['../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.analysis.episodes.build import EpisodeData
 from physion.analysis.episodes.trial_statistics import pre_post_statistics
+from physion.utils import plot_tools as pt
 
 sys.path += ['../']
 from utils_.General_overview_episodes import compute_high_arousal_cond
@@ -99,7 +100,7 @@ def plot_boxplot(boxplot_dict):
     stats = my_math.calc_stats(boxplot_dict["title"], *boxplot_dict["data"], debug=False)
     my_math.plot_stats(AX, n_groups=len(boxplot_dict["data"]), stats=stats, y_pos1=0)
 
-    return 0
+    return fig, AX
 
 def plot_dFoF(diffs_act, diffs_rest, protocol, filename, metric):
 
@@ -245,7 +246,7 @@ def plot_trace_vdFoF(traces_act, traces_rest, aligned=False):
     
     ax.axhline(y=0, linewidth=0.5, linestyle='--')
 
-    return 0
+    return fig, AX
 
 def plot_trace_loco(traces_act, traces_rest):
 
@@ -512,10 +513,10 @@ AX[1].set_ylim([-4,10])
 ####################################################################
 #protocol = "static-patch"
 #protocol = "drifting-gratings"
-#protocol = "Natural-Images-4-repeats"
+protocol = "Natural-Images-4-repeats"
 #protocol = 'moving-dots' 
 #protocol = 'random-dots'
-protocol = "looming-stim"
+#protocol = "looming-stim"
 
 traces_act_s, traces_rest_s, diffs_act_s, diffs_rest_s = [], [], [], []
 traces_act_resp_s, traces_rest_resp_s, traces_act_pos_s, traces_rest_pos_s, traces_act_neg_s, traces_rest_neg_s = [], [], [], [], [], []
@@ -645,16 +646,18 @@ diffs_rest_all_resp = np.concatenate(diffs_rest_resp_s)
 diffs_act_all_resp_ = [x for x in diffs_act_all_resp if not np.isnan(x)]
 diffs_rest_all_resp_ = [x for x in diffs_rest_all_resp if not np.isnan(x)]
 
-plot_trace_vdFoF(flattened_act_resp, flattened_rest_resp)
-plot_trace_vdFoF(flattened_act_resp, flattened_rest_resp, aligned=True)
-plot_dFoF(diffs_act_all_resp, diffs_rest_all_resp, protocol=protocol, filename="ALL recordings", metric="roi")
+#plot_trace_vdFoF(flattened_act_resp, flattened_rest_resp)
+#plot_trace_vdFoF(flattened_act_resp, flattened_rest_resp, aligned=True)
+#plot_dFoF(diffs_act_all_resp, diffs_rest_all_resp, protocol=protocol, filename="ALL recordings", metric="roi")
 
 boxplot_dict = {"title": "Difference baselines Act vs Rest",
                 "data" : [diffs_act_all_resp_, diffs_rest_all_resp_],
                 "labels" : ["Active", "Rest"], 
-                "colors" : ["orangered","maroon"]}
+                "colors" : ["orangered","maroon"], 
+                "y_label": "Amplitude peak dFoF", 
+                "figsize": (1,3)}
 
-plot_boxplot(boxplot_dict)
+#plot_boxplot(boxplot_dict)
 
 #%% POSITIVE CELLS
 temp_act_pos = [np.nanmean(traces_act_pos_s[i], axis=0 ) for i in range(len(traces_act_pos_s))]
@@ -672,8 +675,8 @@ diffs_rest_all_pos = np.concatenate(diffs_rest_pos_s)
 diffs_act_all_pos_ = [x for x in diffs_act_all_pos if not np.isnan(x)]
 diffs_rest_all_pos_ = [x for x in diffs_rest_all_pos if not np.isnan(x)]
 
-plot_trace_vdFoF(flattened_act_pos, flattened_rest_pos)
-plot_trace_vdFoF(flattened_act_pos, flattened_rest_pos, aligned=True)
+fig_trace1, _ = plot_trace_vdFoF(flattened_act_pos, flattened_rest_pos)
+fig_trace2, _ = plot_trace_vdFoF(flattened_act_pos, flattened_rest_pos, aligned=True)
 plot_dFoF(diffs_act_all_pos, diffs_rest_all_pos, protocol=protocol, filename="ALL recordings", metric="roi")
 
 boxplot_dict = {"title": "Amplitude peak Act vs Rest",
@@ -681,9 +684,14 @@ boxplot_dict = {"title": "Amplitude peak Act vs Rest",
                 "labels" : ["Active", "Rest"], 
                 "colors" : ["greenyellow","darkolivegreen"], 
                 "y_label": "Amplitude peak dFoF", 
-                "figsize": (1,3)}
+                "figsize": (1.5,3)}
 
-plot_boxplot(boxplot_dict)
+fig_boxplot, _ = plot_boxplot(boxplot_dict)
+
+
+fig_trace2.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/traces_dFoF_natural.svg'))
+fig_boxplot.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/boxplot_d_dFoF_natural.svg'))
+
 
 #%% NEGATIVE CELLS
 temp_act_neg = [np.nanmean(traces_act_neg_s[i], axis=0 ) for i in range(len(traces_act_neg_s))]
@@ -701,20 +709,25 @@ diffs_rest_all_neg = np.concatenate(diffs_rest_neg_s)
 diffs_act_all_neg_ = [x for x in diffs_act_all_neg if not np.isnan(x)]
 diffs_rest_all_neg_ = [x for x in diffs_rest_all_neg if not np.isnan(x)]
 
-plot_trace_vdFoF(flattened_act_neg, flattened_rest_neg)
-plot_trace_vdFoF(flattened_act_neg, flattened_rest_neg, aligned=True)
-plot_dFoF(diffs_act_all_neg, diffs_rest_all_neg, protocol=protocol, filename="ALL recordings", metric="roi")
+#plot_trace_vdFoF(flattened_act_neg, flattened_rest_neg)
+fig_trace2, _ = plot_trace_vdFoF(flattened_act_neg, flattened_rest_neg, aligned=True)
+#plot_dFoF(diffs_act_all_neg, diffs_rest_all_neg, protocol=protocol, filename="ALL recordings", metric="roi")
 
 boxplot_dict = {"title": "Difference baselines Act vs Rest",
                 "data" : [diffs_act_all_neg_, diffs_rest_all_neg_],
                 "labels" : ["Active", "Rest"], 
                 "colors" : ["greenyellow","darkolivegreen"], 
                 "y_label": "Amplitude peak dFoF", 
-                "figsize": (1,3)}
-plot_boxplot(boxplot_dict)
+                "figsize": (1.5,3)}
+
+fig_boxplot, _ = plot_boxplot(boxplot_dict)
+
+fig_trace2.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/traces_dFoF_natural.svg'))
+fig_boxplot.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/boxplot_d_dFoF_natural.svg'))
 
 
 #%% VARIATION BASELINE ACT vs BASELINE REST for the different groups of ROIs
+
 d_bsl_all = get_diffs_baseline(traces_act_s, traces_rest_s)
 d_bsl_resp = get_diffs_baseline(traces_act_resp_s, traces_rest_resp_s)
 d_bsl_pos = get_diffs_baseline(traces_act_pos_s, traces_rest_pos_s)
@@ -738,3 +751,92 @@ boxplot_dict = {"title": "Difference baselines",
 
 plot_boxplot(boxplot_dict)
 
+
+#%% QUANTIFY GAIN - MULTIPLICATIVE AND ADDITIVE EFFECT
+fig, AX = pt.figure(figsize=(5,5), 
+                    ax_scale=(2, 3)) 
+
+act_resp = boxplot_dict["data"][0] #active
+rest_resp = boxplot_dict["data"][1] #rest
+
+AX.scatter(rest_resp, act_resp)
+
+pt.set_plot(ax=AX, 
+            title= f"{protocol}, n={len(boxplot_dict["data"][0])}",
+            spines = ['bottom', 'left'],
+            ylabel='Amplitude peak active state',
+            xlabel='Amplitude peak resting state',
+            fontsize=8)
+
+# Fit line
+a, b = np.polyfit(rest_resp, act_resp, 1)
+
+# Create smooth x values for plotting line
+x_fit = np.linspace(min(rest_resp), max(rest_resp), 100)
+y_fit = a * x_fit + b
+
+# Plot fit
+AX.plot(x_fit, y_fit, c="blue")
+
+print(f"y = {a:.3f}x + {b:.3f}")
+
+r = np.corrcoef(rest_resp, act_resp)[0,1]
+r2 = r**2
+
+AX.text(0.05, 0.95,
+        f"y = {a:.1f}x + {b:.1f}   $R^2$ = {r2:.3f}",
+        transform=AX.transAxes,
+        verticalalignment='top')
+
+#%% QUANTIFY GAIN - MULTIPLICATIVE AND ADDITIVE EFFECT - HEXBIN plot 
+act_resp = boxplot_dict["data"][0] #active
+rest_resp = boxplot_dict["data"][1] #rest
+
+x = rest_resp
+y = act_resp
+
+xlim = np.min(x), np.max(x)
+ylim = np.min(y), np.max(y)
+
+#fig, ax0 = pt.subplots(ncols=1, figsize=(9, 4))
+fig, ax0 = pt.figure(axes=(1, 1), ax_scale=(3, 10), wspace=1.5)
+
+hb = ax0.hexbin(x, y, gridsize=50, bins = 'log', cmap='inferno')
+ax0.set(xlim=xlim, ylim=ylim)
+cb = fig.colorbar(hb, ax=ax0, label='counts')
+
+# Fit line
+a, b = np.polyfit(rest_resp, act_resp, 1)
+
+# Create smooth x values for plotting line
+x_fit = np.linspace(min(rest_resp), max(rest_resp), 100)
+y_fit = a * x_fit + b
+
+# Plot fit
+ax0.plot(x_fit, y_fit, c="blue")
+ax0.plot(x_fit, x_fit, linestyle="--", c="black")
+
+print(f"y = {a:.3f}x + {b:.3f}")
+
+r = np.corrcoef(rest_resp, act_resp)[0,1]
+r2 = r**2
+
+ax0.text(0.15, 0.95,
+        f"y = {a:.1f}x + {b:.1f}   $R^2$ = {r2:.3f}",
+        transform=ax0.transAxes,
+        verticalalignment='top', 
+        fontsize=12)
+
+pt.set_plot(ax=ax0, 
+            title= f"{protocol}, n={len(boxplot_dict["data"][0])}",
+            spines = ['bottom', 'left'],
+            ylabel='Amplitude peak active state',
+            xlabel='Amplitude peak resting state',
+            fontsize=15)
+
+#pt.bar_legend(ax0, bar_legend_args={"fontsize":10})
+
+ax0.axvline(x=0, color='black', linewidth=0.5)
+ax0.axhline(y=0, color='black', linewidth=0.5)
+
+fig.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/hexbin_natural.svg'))

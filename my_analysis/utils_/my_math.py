@@ -139,7 +139,7 @@ def calc_stats(title, *groups, debug=True):
 def plot_stats(ax, n_groups, stats, y_pos1=1, y_pos2=1):
     
     if n_groups==2:
-        y_pos_m = 0
+        
         significance = 'ns'
         p_value = stats['p_val']
         if (np.isnan(p_value)):
@@ -158,15 +158,15 @@ def plot_stats(ax, n_groups, stats, y_pos1=1, y_pos2=1):
             # Get dynamic bar height = 1/8 of axis range
             ymin, ymax = ax.get_ylim()
             print("ymin, ymax :", ymin, ymax)
-            bracket_height = (ymax - ymin) / 10.0
+            bracket_height = (ymax - ymin) / 12.0
 
             # Get the y positions for both bars being compared
             #y_pos1 = means[0] + sems[0]
             #y_pos2 = means[1] + sems[1]
-            y_pos = max(y_pos1, y_pos2) + ((ymax - ymin)/2.5) # Place the significance line above the highest bar
-            if y_pos==y_pos_m:
-                y_pos += (ymax - ymin)/2.5
-            y_pos_m=y_pos
+
+            print("y pos1, ypos 2 ", y_pos1, y_pos2)
+
+            y_pos = ymax + ((ymax - ymin)/6) # Place the significance line above the highest bar
 
             print("y_pos", y_pos)
          
@@ -182,7 +182,6 @@ def plot_stats(ax, n_groups, stats, y_pos1=1, y_pos2=1):
     
     if n_groups==3 :
         if stats['p_val'] < 0.05: #there are differences between groups
-            y_pos_m = 0
             for j1 in range(n_groups):
                 for j2 in range(n_groups):
                     if j1 < j2:  # Avoid duplicate comparisons (i.e., comparing the same time to itself)
@@ -205,10 +204,7 @@ def plot_stats(ax, n_groups, stats, y_pos1=1, y_pos2=1):
                             #y_pos1 = means[j1] + sems[j1]
                             #y_pos2 = means[j2] + sems[j2]
                             y_pos = max(y_pos1, y_pos2) + 0.8 # Place the significance line above the highest bar
-                            if y_pos==y_pos_m:
-                                y_pos +=1
-                            y_pos_m=y_pos
-                        
+                           
                             # Get dynamic bar height = 1/10 of axis range
 
                             ymin, ymax = ax.get_ylim()

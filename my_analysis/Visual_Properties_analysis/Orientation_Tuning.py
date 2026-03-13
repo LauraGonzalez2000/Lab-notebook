@@ -102,6 +102,7 @@ def compute_tunings2(data_s, stat_test_props, response_significance_threshold):
                 np.save(os.path.join(tempfile.tempdir, 'Tunings_WT_contrast-%.1f.npy' % contrast),Tunings)
         return 0
 
+'''
 # %% LOAD DATA
 datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','Ori-contrasts', 'NDNF-Cre', 'NWBs_orientations')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
@@ -276,3 +277,4 @@ fig, ax = plot_responsiveness(['WT_contrast-1.0',
                                'WT_contrast-0.5'],
                               average_by='ROIs', #issue !!  #not average by subject
                               path=tempfile.tempdir)
+'''
