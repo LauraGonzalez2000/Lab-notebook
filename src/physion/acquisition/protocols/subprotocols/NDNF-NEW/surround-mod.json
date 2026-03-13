@@ -1,0 +1,18 @@
+{
+  "Presentation": "Stimuli-Sequence",
+  "Stimulus": "grating",
+  "movie_refresh_freq":30.0,
+  "Screen": "Dell-2020",
+  "units":"cm",
+  "_______________________________________________________________________1":0,
+  "presentation-duration": 2,
+  "presentation-interstim-period": 4,
+  "N-repeat": 10,
+  "_______________________________________________________________________2":0,
+  "speed": 2,
+  "angle-1": 0, "angle-2": 90, "N-angle": 2,
+  "spatial-freq": 0.04,
+  "radius-1": 20, "radius-2":60, "N-radius":3
+}
+
+

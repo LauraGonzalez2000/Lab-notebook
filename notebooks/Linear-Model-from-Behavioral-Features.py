@@ -31,7 +31,7 @@ data = physion.analysis.dataframe.NWB_to_dataframe(filename,
 # %% [markdown]
 # ## Visualization per ROI
 
-# %%
+# %%  
 bhv_keys = [k for k in data.keys() if (('Run' in k) or ('Gaze' in k) or ('Whisk' in k) or ('Pupil' in k))]
 
 N = 10 # max number for display
