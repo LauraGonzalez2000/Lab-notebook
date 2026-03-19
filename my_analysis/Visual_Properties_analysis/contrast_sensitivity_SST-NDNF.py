@@ -13,6 +13,7 @@ sys.path += ['..']
 from utils_.Responsiveness_methods import calc_responsiveness2, plot_contrast_responsiveness_
 
 from scipy import stats
+
 pt.set_style('manuscript')
 
 #%%
@@ -35,42 +36,46 @@ def plot_contrast_responsiveness_(keys,
         fig, ax = pt.figure(**fig_args)
         inset = pt.inset(ax, [1.7,0.1,0.5,0.8])
 
-        print(Responsive)
-
-        '''
-        for i, (cell_type, color) in enumerate(zip(keys, colors)):
-                
-            Responsive[cell_type][angle] = 100*(sum(Responsive[cell_type][angle])/len(Responsive[cell_type][angle][0][i]))
-            
-            values = Responsive[cell_type][angle]
-
-            values_m = np.mean(values, axis=0)
-            
-            x = np.arange(len(values_m))+ 0.4*i
-            y = values_m
-            sy = stats.sem(values, axis=0)
-
-            print("values to plot : ", y)
-            pt.bar(y = y, 
-                    sy= sy, 
-                    x = x, 
-                    width=0.5/len(keys),
-                    color=color,
-                    ax=ax)
-        '''
         for i, (cell_type, color) in enumerate(zip(keys, colors)):
 
-            for i, arr in enumerate(Responsive[cell_type][angle]):
-                print(i, arr.shape)
+            if means=="ROI":
+                #merging all ROIs together
+                values_all = np.concatenate(Responsive[cell_type][angle], axis=1)[0]  #shape #totROIS x 8
+                values_per = 100 * (sum(values_all)/len(values_all))
+                y = values_per #no need to mean
+                sy = 0 # there is no error bar if we take all ROIs
 
-            values_all = np.concatenate(Responsive[cell_type][angle], axis=0)
+                Gains = []
+                slope, _ = np.polyfit(range(len(values_per)), values_per, 1)
+                Gains.append(slope)
 
-            y = 100 * values_all.mean(axis=0)
-            sy = 100 * stats.sem(values_all, axis=0)
 
+            if means=='session':
+                #calculating per session and average
+                values_per = []
+                Gains = []
+                for file_i in range(len(Responsive[cell_type][angle])):
+                    values_file = Responsive[cell_type][angle][file_i] #shape nROIs x 8
+                    values_per_ = 100 * (sum(values_file)/len(values_file))
+                    values_per_file = np.mean(values_per_, axis=0)
+                    values_per.append(values_per_file)
+
+                    y = values_per_file
+                    x = np.arange(len(y))   
+                    slope, _ = np.polyfit(x, 
+                                          y, 
+                                          deg=1)
+                    Gains.append(slope)   
+
+                values_per_m = np.mean(values_per, axis=0)
+                y = values_per_m
+                sy = stats.sem(values_per, axis=0)
+                #sy = np.std(values_per, axis=0, ddof=1)
+            
             x = np.arange(len(y)) + 0.4*i
-
-            print("values to plot :", y)
+            print("values to plot : ", y)
+            print("values to plot sem : ", sy)
+            print("values to plot gains :", Gains)
 
             pt.bar(y=y,
                 sy=sy,
@@ -78,17 +83,9 @@ def plot_contrast_responsiveness_(keys,
                 width=0.5/len(keys),
                 color=color,
                 ax=ax)
-            
-            #Gains plot
-            contrasts = [0.05,0.18571429,0.32142857,0.45714286,
-                            0.59285714, 0.72857143,0.86428571, 1.]
-            Gains = []
-            for r in Responsive[cell_type][angle]:
-                temp = [r_ / contrast for r_, contrast in zip(r, contrasts)]
-                Gains.append(np.mean(temp))
 
             pt.violin(Gains, x=i, color=color, ax=inset)
-            #pt.bar([np.mean(Gains)], x=[i], color=color, ax=inset, alpha=0.1) #looks confusing to me
+            pt.bar([np.mean(Gains)], x=[i], color=color, ax=inset, alpha=0.1) #looks confusing to me
 
             if with_label:
                     annot = i*'\n'+' %.1f$\\pm$%.1f, ' %(\
@@ -112,7 +109,45 @@ def plot_contrast_responsiveness_(keys,
                     title='gain',
                     ylabel='%resp. / contrast')
         
+        if means=="session":
+            num_sessions = [sum(len(Responsive[cell_type][angle][i]) for i in range(len(Responsive[cell_type][angle])))][0]
+            ax.annotate(xy = (-0.5,ylim[1]), text = f"mean by {means}s ({num_sessions})")
+        elif means=="ROI":
+            ax.annotate(xy = (-0.5,ylim[1]), text = f"{len(values_all)} {means}s")
+        
         return fig, ax
+
+def fill_Responsive(Responsive, group_name, data_s, repetition_keys=['repeat', 'angle']):
+
+    for data_i, data in enumerate(data_s):
+       
+        ep = EpisodeData(data, 
+                         protocol_name="ff-gratings-2orientations-8contrasts-15repeats", 
+                         quantities=['dFoF'])
+    
+        resp_cond, pos_cond, neg_cond = calc_responsiveness2(ep, data.nROIs, repetition_keys= repetition_keys)
+        
+        print("len pos cond", len(pos_cond))
+        print("pos cond", pos_cond)
+        #percentage_pos = 100*(sum(pos_cond)/data.nROIs)
+        #percentage_neg = 100*(sum(neg_cond)/data.nROIs)
+
+        #for param_i in range(len(resp_cond[0])):
+        if len(resp_cond[0])==16:
+            print("angles not merged")
+            if param_i<8:
+                    Responsive["Pos"][group_name]["0.0"][data_i].append(pos_cond[:][:8])
+                    Responsive["Neg"][group_name]["0.0"][data_i].append(neg_cond[:][:8])
+            elif 7<param_i:
+                    Responsive["Pos"][group_name]["90.0"][data_i].append(pos_cond[:][8:16])
+                    Responsive["Neg"][group_name]["90.0"][data_i].append(neg_cond[:][8:16])
+
+        elif len(resp_cond[0])==8: 
+            print("angles merged")
+            Responsive["Pos"][group_name]["both"][data_i].append(pos_cond)
+            Responsive["Neg"][group_name]["both"][data_i].append(neg_cond)
+
+    return Responsive
 
 
 #%% Data
@@ -151,6 +186,178 @@ for i in range(len(SESSIONS_NDNF['files'])):
     data_s_NDNF.append(data)
 
 #%%
+Responsive = {"Pos" : {"SST-Cre" : {"0.0" : [[] for _ in range(len(data_s_SST))],
+                                    "90.0": [[] for _ in range(len(data_s_SST))], 
+                                    "both": [[] for _ in range(len(data_s_SST))]}, 
+                       "NDNF-Cre" : {"0.0" : [[] for _ in range(len(data_s_NDNF))],
+                                     "90.0": [[] for _ in range(len(data_s_NDNF))], 
+                                     "both": [[] for _ in range(len(data_s_NDNF))]}},
+
+              "Neg" : {"SST-Cre" : {"0.0" : [[] for _ in range(len(data_s_SST))],
+                                    "90.0": [[] for _ in range(len(data_s_SST))], 
+                                    "both": [[] for _ in range(len(data_s_SST))]}, 
+                       "NDNF-Cre" : {"0.0" : [[] for _ in range(len(data_s_NDNF))],
+                                     "90.0": [[] for _ in range(len(data_s_NDNF))], 
+                                     "both": [[] for _ in range(len(data_s_NDNF))]}}}
+
+
+repetition_keys = ['repeat', 'angle']
+Responsive = fill_Responsive(Responsive, group_name="SST-Cre",  data_s = data_s_SST, repetition_keys=repetition_keys)
+Responsive = fill_Responsive(Responsive, group_name="NDNF-Cre", data_s = data_s_NDNF, repetition_keys=repetition_keys)
+
+
+#%% PLOT
+#keys = ['SST-Cre'   , 'NDNF-Cre']
+keys = ['SST-Cre']
+#keys = ['NDNF-Cre']  
+
+#colors = ['tab:orange','tab:green']
+colors = ['tab:orange']
+#colors = ['tab:green']
+
+#angle = "0.0"
+#angle = "90.0"
+angle = "both"
+ 
+for sign in ["Pos", "Neg"]:
+    fig, ax = plot_contrast_responsiveness_(keys=keys, 
+                                            Responsive=Responsive[sign], 
+                                            sign=sign,
+                                            colors = colors,
+                                            fig_args=dict(ax_scale=(1.5,2)), 
+                                            angle=angle, 
+                                            ylim=[0,101],  
+                                            means="session")
+    fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/responsiveness_{sign}.svg'))
+    
+
+
+
+
+
+
+#%%
+############################################################# OLD - from summary
+##############################################################
+
+def count_animals_from_npy(folder, dataset_name):
+    # Find file matching dataset name
+    matches = [f for f in os.listdir(folder)
+               if dataset_name in f and f.endswith(".npy")]
+    
+    if len(matches) == 0:
+        raise FileNotFoundError(f"No file found for dataset {dataset_name}")
+    if len(matches) > 1:
+        raise ValueError(f"Multiple matches for {dataset_name}: {matches}")
+    
+    fpath = os.path.join(folder, matches[0])
+    
+    # Load the object array
+    arr = np.load(fpath, allow_pickle=True)
+
+    # ---------- ADDED: ROI counts ----------
+    n_rois_original = arr[0]["nROIs_original"]   # ORIGINAL ROI count
+    n_rois_final = arr[0]["nROIs_final"]         # FINAL ROI count
+    # ---------------------------------------
+
+    # Extract subjects from each entry (one per session)
+    subjects = [entry['subject'] for entry in arr]
+    
+    # Unique animal IDs
+    unique_subjects = sorted(set(subjects))
+    
+    return len(unique_subjects), unique_subjects, n_rois_original, n_rois_final
+
+def compute_session_gain(entry):
+    """
+    Gain = slope between lowest and highest contrast:
+    (mean response at max contrast - mean response at min contrast) / Δcontrast
+    Assumes contrasts normalized 0→1 (Δcontrast = 1).
+    """
+    R = entry["Responses"]  # shape (n_cells, n_contrasts)
+    mean_low = R[:, 0].mean()
+    mean_high = R[:, -1].mean()
+    return mean_high - mean_low
+
+def extract_gains_from_dataset(folder, dataset_name):
+    matches = [f for f in os.listdir(folder)
+               if dataset_name in f and f.endswith(".npy")]
+    if len(matches) == 0:
+        raise FileNotFoundError(dataset_name)
+    if len(matches) > 1:
+        raise ValueError(matches)
+
+    arr = np.load(os.path.join(folder, matches[0]), allow_pickle=True)
+    
+    gains = [compute_session_gain(entry) for entry in arr]
+    return np.array(gains)
+
+#%% LOAD DATA
+summary_folder = os.path.expanduser('~/DATA/summary')
+DATASETS = ['SST-cells_WT_Adult_V1_angle-90.0',
+            'SST-cells_WT_Adult_V1_angle-0.0']
+
+
+#%% d dFOF vs contrasts ; gain
+fig, ax = plot_contrast_sensitivity(DATASETS,
+                                    average_by='sessions',
+                                    colors = ['tab:red', 'tab:green'],
+                                    path=summary_folder)
+                                    #gain_plot='bar')
+
+animal_counts = {}
+gain_dict = {} # Mean gain per dataset and statistical comparison
+for d in DATASETS:   
+    n_animals, subjects, n_rois_orig, n_rois_final = count_animals_from_npy(summary_folder, f"Sensitivities_{d}")
+    animal_counts[d] = (n_animals, subjects)
+    print(f"{d}:\n {n_animals} animals → {subjects} |\n "
+          f"nROIs_original = {n_rois_orig}\n nROIs_final = {n_rois_final}")
+    gains = extract_gains_from_dataset(summary_folder, d)
+    gain_dict[d] = gains
+
+    mean_gain = gains.mean()
+    sem_gain = gains.std() / np.sqrt(len(gains))
+
+    print(f" mean gain = {mean_gain:.3f}  ± {sem_gain:.3f}  (n={len(gains)})\n")
+
+    
+#%% STAT Test gains
+print("\n=== Mann–Whitney U tests (gain) ===")
+names = list(gain_dict.keys())
+
+for i in range(len(names)):
+    for j in range(i+1, len(names)):
+        d1, d2 = names[i], names[j]
+        U, p = mannwhitneyu(gain_dict[d1], gain_dict[d2], alternative='two-sided')
+        print(f"{d1}  vs  {d2}:  U={U:.1f},  p={p:.5f}")
+
+
+# %% % responsiveness vs contrast ; gain
+for sign in ["positive", "negative"]:
+    fig, ax = plot_contrast_responsiveness(DATASETS,\
+                            sign=sign,
+                            nROIs='final', # "original" or "final", before/after dFoF criterion
+                            colors = ['tab:red', 'tab:green'],
+                            path=summary_folder,
+                            fig_args=dict(ax_scale=(1.5,2)))
+    ax.set_ylim([0,100])
+
+#%%
+
+
+
+
+Sensitivities = \
+                    np.load(os.path.join(summary_folder, 'Sensitivities_SST-cells_WT_Adult_V1_angle-0.0.npy'), 
+                            allow_pickle=True)
+
+print(Sensitivities[0].keys())
+
+print(Sensitivities[0]["contrast"])
+
+
+#%%
+#%% TO DELETE
 Responsive_pos = {"SST-Cre" : {"0.0" : [[] for _ in range(len(data_s_SST))],
                                "90.0": [[] for _ in range(len(data_s_SST))], 
                                "both": [[] for _ in range(len(data_s_SST))]}, 
@@ -167,6 +374,7 @@ Responsive_neg = {"SST-Cre" : {"0.0" : [[] for _ in range(len(data_s_SST))],
 
 repetition_keys = ['repeat', 'angle']
 #repetition_keys = ['repeat'] #to plot by angle
+
 nROIs_SST=0
 for data_i, data in enumerate(data_s_SST):
     nROIs_SST += data.nROIs
@@ -200,82 +408,6 @@ for data_i, data in enumerate(data_s_SST):
             Responsive_neg["SST-Cre"]["both"][data_i].append(percentage_neg[param_i])
 
 
-resp_cond_s = []
-pos_cond_s = []
-neg_cond_s = []
-ns_cond_s = []
-
-nROIs_NDNF=0
-for data_i, data in enumerate(data_s_NDNF):
-    nROIs_NDNF += data.nROIs 
-
-    ep = EpisodeData(data, 
-                     protocol_name="ff-gratings-2orientations-8contrasts-15repeats", 
-                     quantities=['dFoF'])
-   
-    varied_params = list(ep.varied_parameters.keys())
-    param_values_angles = ep.varied_parameters[varied_params[0]]
-    param_values_contrasts = ep.varied_parameters[varied_params[1]]
-    resp_cond, pos_cond, neg_cond = calc_responsiveness2(ep, data.nROIs, repetition_keys= repetition_keys)
-    
-    resp_cond_s.append(resp_cond)
-    pos_cond_s.append(pos_cond)
-    neg_cond_s.append(neg_cond)
-    ns_cond_s.append(~resp_cond)
-    
-    percentage_pos = 100*(sum(pos_cond)/data.nROIs)
-    percentage_neg = 100*(sum(neg_cond)/data.nROIs)
-
-    for param_i in range(len(resp_cond[0])):
-        if len(resp_cond[0])==16:
-            print("angles not merged")
-            if param_i<8:
-                    Responsive_pos["NDNF-Cre"]["0.0"][data_i].append(percentage_pos[param_i])
-                    Responsive_neg["NDNF-Cre"]["0.0"][data_i].append(percentage_neg[param_i])
-            elif 7<param_i:
-                    Responsive_pos["NDNF-Cre"]["90.0"][data_i].append(percentage_pos[param_i])
-                    Responsive_neg["NDNF-Cre"]["90.0"][data_i].append(percentage_neg[param_i])
-
-            Responsive_pos["NDNF-Cre"]["both"][data_i].append(percentage_pos[param_i])
-            Responsive_neg["NDNF-Cre"]["both"][data_i].append(percentage_neg[param_i])
-
-        elif len(resp_cond[0])==8: 
-            print("angles merged")
-            Responsive_pos["NDNF-Cre"]["both"][data_i].append(percentage_pos[param_i])
-            Responsive_neg["NDNF-Cre"]["both"][data_i].append(percentage_neg[param_i])
-
-
-
-Responsive = [Responsive_pos, Responsive_neg]
-
-#%%
-print(nROIs_SST)
-print(nROIs_NDNF)
-#%% PLOT
-keys = ['SST-Cre'   , 'NDNF-Cre']
-#keys = ['SST-Cre']
-#keys = ['NDNF-Cre']  
-
-colors = ['tab:orange','tab:green']
-#colors = ['tab:orange']
-#colors = ['tab:green']
-
-#angle = "0.0"
-#angle = "90.0"
-angle = "both"
- 
-for i, sign in enumerate(["positive", "negative"]):
-    fig, ax = plot_contrast_responsiveness_(keys=keys, 
-                                            Responsive=Responsive[i], 
-                                            sign=sign,
-                                            colors = colors,
-                                            fig_args=dict(ax_scale=(1.5,2)), 
-                                            angle=angle, 
-                                            ylim=[0,101])
-    fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/responsiveness_{sign}.svg'))
-    
-
-#%%
 #%%
 Responsive_pos = {"SST-Cre" : {"0.0" : [[] for _ in range(len(data_s_SST))],
                                "90.0": [[] for _ in range(len(data_s_SST))], 
@@ -414,122 +546,42 @@ for i, sign in enumerate(["positive", "negative"]):
     
     fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/responsiveness_{sign}.svg'))
     
+def fill_Responsive(Responsive, group_name, data_s, repetition_keys=['repeat', 'angle']):
 
+    nROIs=0
+    for data_i, data in enumerate(data_s):
+        nROIs += data.nROIs 
 
-#%%
-############################################################# OLD - from summary
-##############################################################
-
-def count_animals_from_npy(folder, dataset_name):
-    # Find file matching dataset name
-    matches = [f for f in os.listdir(folder)
-               if dataset_name in f and f.endswith(".npy")]
+        ep = EpisodeData(data, 
+                        protocol_name="ff-gratings-2orientations-8contrasts-15repeats", 
+                        quantities=['dFoF'])
     
-    if len(matches) == 0:
-        raise FileNotFoundError(f"No file found for dataset {dataset_name}")
-    if len(matches) > 1:
-        raise ValueError(f"Multiple matches for {dataset_name}: {matches}")
-    
-    fpath = os.path.join(folder, matches[0])
-    
-    # Load the object array
-    arr = np.load(fpath, allow_pickle=True)
+        resp_cond, pos_cond, neg_cond = calc_responsiveness2(ep, data.nROIs, repetition_keys= repetition_keys)
+        
+        percentage_pos = 100*(sum(pos_cond)/data.nROIs)
+        percentage_neg = 100*(sum(neg_cond)/data.nROIs)
 
-    # ---------- ADDED: ROI counts ----------
-    n_rois_original = arr[0]["nROIs_original"]   # ORIGINAL ROI count
-    n_rois_final = arr[0]["nROIs_final"]         # FINAL ROI count
-    # ---------------------------------------
+        for param_i in range(len(resp_cond[0])):
+            if len(resp_cond[0])==16:
+                print("angles not merged")
+                if param_i<8:
+                        Responsive["Pos"][group_name]["0.0"][data_i].append(percentage_pos[param_i])
+                        Responsive["Neg"][group_name]["0.0"][data_i].append(percentage_neg[param_i])
+                elif 7<param_i:
+                        Responsive["Pos"][group_name]["90.0"][data_i].append(percentage_pos[param_i])
+                        Responsive["Neg"][group_name]["90.0"][data_i].append(percentage_neg[param_i])
 
-    # Extract subjects from each entry (one per session)
-    subjects = [entry['subject'] for entry in arr]
-    
-    # Unique animal IDs
-    unique_subjects = sorted(set(subjects))
-    
-    return len(unique_subjects), unique_subjects, n_rois_original, n_rois_final
+            elif len(resp_cond[0])==8: 
+                print("angles merged")
+                Responsive["Pos"][group_name]["both"][data_i].append(percentage_pos[param_i])
+                Responsive["Neg"][group_name]["both"][data_i].append(percentage_neg[param_i])
 
-def compute_session_gain(entry):
-    """
-    Gain = slope between lowest and highest contrast:
-    (mean response at max contrast - mean response at min contrast) / Δcontrast
-    Assumes contrasts normalized 0→1 (Δcontrast = 1).
-    """
-    R = entry["Responses"]  # shape (n_cells, n_contrasts)
-    mean_low = R[:, 0].mean()
-    mean_high = R[:, -1].mean()
-    return mean_high - mean_low
-
-def extract_gains_from_dataset(folder, dataset_name):
-    matches = [f for f in os.listdir(folder)
-               if dataset_name in f and f.endswith(".npy")]
-    if len(matches) == 0:
-        raise FileNotFoundError(dataset_name)
-    if len(matches) > 1:
-        raise ValueError(matches)
-
-    arr = np.load(os.path.join(folder, matches[0]), allow_pickle=True)
-    
-    gains = [compute_session_gain(entry) for entry in arr]
-    return np.array(gains)
-
-#%% LOAD DATA
-summary_folder = os.path.expanduser('~/DATA/summary')
-DATASETS = ['SST-cells_WT_Adult_V1_angle-90.0',
-            'SST-cells_WT_Adult_V1_angle-0.0']
+    return Responsive
 
 
-#%% d dFOF vs contrasts ; gain
-fig, ax = plot_contrast_sensitivity(DATASETS,
-                                    average_by='sessions',
-                                    colors = ['tab:red', 'tab:green'],
-                                    path=summary_folder)
-                                    #gain_plot='bar')
-
-animal_counts = {}
-gain_dict = {} # Mean gain per dataset and statistical comparison
-for d in DATASETS:   
-    n_animals, subjects, n_rois_orig, n_rois_final = count_animals_from_npy(summary_folder, f"Sensitivities_{d}")
-    animal_counts[d] = (n_animals, subjects)
-    print(f"{d}:\n {n_animals} animals → {subjects} |\n "
-          f"nROIs_original = {n_rois_orig}\n nROIs_final = {n_rois_final}")
-    gains = extract_gains_from_dataset(summary_folder, d)
-    gain_dict[d] = gains
-
-    mean_gain = gains.mean()
-    sem_gain = gains.std() / np.sqrt(len(gains))
-
-    print(f" mean gain = {mean_gain:.3f}  ± {sem_gain:.3f}  (n={len(gains)})\n")
-
-    
-#%% STAT Test gains
-print("\n=== Mann–Whitney U tests (gain) ===")
-names = list(gain_dict.keys())
-
-for i in range(len(names)):
-    for j in range(i+1, len(names)):
-        d1, d2 = names[i], names[j]
-        U, p = mannwhitneyu(gain_dict[d1], gain_dict[d2], alternative='two-sided')
-        print(f"{d1}  vs  {d2}:  U={U:.1f},  p={p:.5f}")
-
-
-# %% % responsiveness vs contrast ; gain
-for sign in ["positive", "negative"]:
-    fig, ax = plot_contrast_responsiveness(DATASETS,\
-                            sign=sign,
-                            nROIs='final', # "original" or "final", before/after dFoF criterion
-                            colors = ['tab:red', 'tab:green'],
-                            path=summary_folder,
-                            fig_args=dict(ax_scale=(1.5,2)))
-    ax.set_ylim([0,100])
-
-#%%
-
-
-
-Sensitivities = \
-                    np.load(os.path.join(summary_folder, 'Sensitivities_SST-cells_WT_Adult_V1_angle-0.0.npy'), 
-                            allow_pickle=True)
-
-print(Sensitivities[0].keys())
-
-print(Sensitivities[0]["contrast"])
+   #contrasts = [0.05,0.18571429,0.32142857,0.45714286,
+            #                0.59285714, 0.72857143,0.86428571, 1.]
+            #Gains = []
+            #for r in Responsive[cell_type][angle]:
+            #    temp = [r_ / contrast for r_, contrast in zip(r, contrasts)]
+            #    Gains.append(np.mean(temp))
