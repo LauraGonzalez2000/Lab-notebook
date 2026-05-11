@@ -21,9 +21,11 @@ import utils_.my_math as my_math
 
 import scipy.stats as stats_func
 import seaborn as sns
+from pathlib import Path
 
 running_speed_threshold = 0.5  #cm/s
 pre_stim = 1
+
 
 #%%
 def get_variation_dFoF(episodes, cond=None, pre_stim=pre_stim):  #TO CHANGE - automatize boundaries
@@ -89,7 +91,7 @@ def plot_boxplot(boxplot_dict):
                     widths=0.6 )
     AX.set_xticks(x)
     AX.set_xticklabels(boxplot_dict["labels"])
-    AX.set_xlabel("ROIs considered")
+    AX.set_xlabel("")
     AX.set_ylabel(boxplot_dict["y_label"])
     
 
@@ -202,7 +204,7 @@ def plot_dFoF(diffs_act, diffs_rest, protocol, filename, metric):
 
 def plot_trace_vdFoF(traces_act, traces_rest, aligned=False):
 
-    fig, ax = plt.subplots(1,1, figsize=(3, 3))
+    fig, ax = plt.subplots(1,1, figsize=(1.5, 3))
 
     mean_act = np.nanmean(traces_act, axis=(0))
     sem_act  = np.nanstd(traces_act, axis=(0)) / np.sqrt(np.sum(~np.isnan(traces_act), axis=(0)))
@@ -224,29 +226,32 @@ def plot_trace_vdFoF(traces_act, traces_rest, aligned=False):
 
 
     # Plot traces +- SEM
-    ax.plot(episodes.t, mean_act, color="greenyellow", label="Active")
-    ax.plot(episodes.t, mean_rest, color="darkolivegreen", label="Rest")
+    ax.plot(episodes.t, mean_act, color="darkorange", label="Active")
+    ax.plot(episodes.t, mean_rest, color="brown", label="Rest")
     ax.fill_between(episodes.t, mean_act - sem_act, mean_act + sem_act,
-                    color="greenyellow", alpha=0.2)
+                    color="darkorange", alpha=0.2)
     ax.fill_between(episodes.t, mean_rest - sem_rest, mean_rest + sem_rest,
-                    color="darkolivegreen", alpha=0.2)
+                    color="brown", alpha=0.2)
 
     # Formatting
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("dFoF")
     ax.set_xticks(np.arange(0, episodes.t.max() + 1, 1))
-    ax.fill_between(np.array([0, episodes.time_duration[0]]), y1=1, y2=-1,
+
+   
+    ymin, ymax = [-1,2]
+    ax.fill_between(np.array([0, episodes.time_duration[0]]), y1=ymax, y2=ymin,
                     color="grey", alpha=0.25)
     
-    ax.fill_between(np.array([-episodes.time_duration[0]/5, 0]), y1=0.8, y2=-0.8,
-                    color="orange", alpha=0.25)
-    ax.fill_between(np.array([episodes.time_duration[0] - episodes.time_duration[0]/5,
-                              episodes.time_duration[0]]), y1=0.8, y2=-0.8,
-                    color="orange", alpha=0.25)
+    #ax.fill_between(np.array([-episodes.time_duration[0]/5, 0]), y1=ymax, y2=ymin,
+    #                color="orange", alpha=0.1)
+    #ax.fill_between(np.array([episodes.time_duration[0] - episodes.time_duration[0]/5,
+    #                          episodes.time_duration[0]]), y1=ymax, y2=ymin,
+    #                color="orange", alpha=0.1)
     
     ax.axhline(y=0, linewidth=0.5, linestyle='--')
 
-    return fig, AX
+    return fig, ax
 
 def plot_trace_loco(traces_act, traces_rest):
 
@@ -259,12 +264,12 @@ def plot_trace_loco(traces_act, traces_rest):
     sem_rest  = np.nanstd(traces_rest, axis=(0)) / np.sqrt(np.sum(~np.isnan(traces_rest), axis=(0)))
 
     # Plot traces +- SEM
-    ax.plot(episodes.t, mean_act, color="greenyellow", label="Active")
-    ax.plot(episodes.t, mean_rest, color="darkolivegreen", label="Rest")
+    ax.plot(episodes.t, mean_act, color="darkorange", label="Active")
+    ax.plot(episodes.t, mean_rest, color="brown", label="Rest")
     ax.fill_between(episodes.t, mean_act - sem_act, mean_act + sem_act,
-                    color="greenyellow", alpha=0.2)
+                    color="darkorange", alpha=0.2)
     ax.fill_between(episodes.t, mean_rest - sem_rest, mean_rest + sem_rest,
-                    color="darkolivegreen", alpha=0.2)
+                    color="brown", alpha=0.2)
 
     # Formatting
     ax.set_xlabel("Time (s)")
@@ -273,11 +278,11 @@ def plot_trace_loco(traces_act, traces_rest):
     ax.fill_between(np.array([0, episodes.time_duration[0]]), y1=7, y2=0,
                     color="grey", alpha=0.25)
     
-    ax.fill_between(np.array([-episodes.time_duration[0]/5, 0]), y1=6.8, y2=0,
-                    color="orange", alpha=0.25)
-    ax.fill_between(np.array([episodes.time_duration[0] - episodes.time_duration[0]/5,
-                              episodes.time_duration[0]]), y1=6.8, y2=0,
-                    color="orange", alpha=0.25)
+    #ax.fill_between(np.array([-episodes.time_duration[0]/5, 0]), y1=6.8, y2=0,
+    #                color="orange", alpha=0.25)
+    #ax.fill_between(np.array([episodes.time_duration[0] - episodes.time_duration[0]/5,
+    #                          episodes.time_duration[0]]), y1=6.8, y2=0,
+    #                color="orange", alpha=0.25)
     
     ax.axhline(y=0, linewidth=0.5, linestyle='--')
 
@@ -364,8 +369,8 @@ def get_diffs_baseline(traces_act_s, traces_rest_s):
 
 ###################################################################################################################
 #%% Load Data
-
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
+#datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','Vision-survey', 'NDNF-Cre','NWBs')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -380,13 +385,12 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discar
 ######################################## TEST 1 FILE #####################################
 ##########################################################################################
 ##################################
+protocol = "static-patch"
+#protocol = "drifting-gratings"
 #protocol = "Natural-Images-4-repeats"
-protocol = "drifting-gratings"
+#protocol = "looming-stim"
 #protocol = 'moving-dots' 
 #protocol = 'random-dots'
-#protocol = "static-patch"
-#protocol = "looming-stim"
-
 index = 1
 filename = SESSIONS['files'][index]
 filename_ = os.path.basename(filename)
@@ -396,7 +400,7 @@ data.build_dFoF(**dFoF_options, verbose=False)
 data.build_running_speed()
 
 episodes = EpisodeData(data, 
-                       quantities=['dFoF', 'Pupil', 'Running-Speed'],
+                       quantities=['dFoF', 'Running-Speed'],
                        protocol_name=protocol,
                        prestim_duration=pre_stim, 
                        verbose=False)
@@ -407,7 +411,8 @@ traces_act, traces_rest, diffs_act, diffs_rest = get_vals_plot(episodes, cond= H
 
 trace_act = [row for arr in traces_act for row in arr]
 trace_rest = [row for arr in traces_rest for row in arr]
-
+print(trace_act)
+print(trace_rest)
 d_bsl = calc_diff_baseline(np.mean(trace_act, axis=0), np.mean(trace_rest, axis=0))
 d_dFoF_act = np.mean(get_variation_dFoF(episodes, cond=HMcond, pre_stim=pre_stim))
 d_dFoF_rest = np.mean(get_variation_dFoF(episodes, cond=~HMcond, pre_stim=pre_stim))
@@ -427,11 +432,11 @@ plot_trace_vdFoF(trace_act, trace_rest, aligned=True)
 ##########################################################################################
 
 #%% not dividing by behavior
-#protocol = "Natural-Images-4-repeats"
+protocol = "static-patch"
 #protocol = "drifting-gratings"
+#protocol = "Natural-Images-4-repeats"
 #protocol = 'moving-dots' 
 #protocol = 'random-dots'
-protocol = "static-patch"
 #protocol = "looming-stim"
 
 traces_ = []
@@ -445,7 +450,7 @@ for i in range(len(SESSIONS['files'])):
     data.build_running_speed()
 
     episodes = EpisodeData(data, 
-                        quantities=['dFoF', 'Pupil', 'Running-Speed'],
+                        quantities=['dFoF', 'Running-Speed'],
                         protocol_name=protocol,
                         prestim_duration=pre_stim, 
                         verbose=False)
@@ -512,11 +517,11 @@ AX[1].set_ylim([-4,10])
 ###################### REST AND ACTIVE #############################
 ####################################################################
 #protocol = "static-patch"
-#protocol = "drifting-gratings"
-protocol = "Natural-Images-4-repeats"
+#protocol = "drifting-gratings" #with or without s!!!
+#protocol = "Natural-Images-4-repeats"
 #protocol = 'moving-dots' 
 #protocol = 'random-dots'
-#protocol = "looming-stim"
+protocol = "looming-stim"
 
 traces_act_s, traces_rest_s, diffs_act_s, diffs_rest_s = [], [], [], []
 traces_act_resp_s, traces_rest_resp_s, traces_act_pos_s, traces_rest_pos_s, traces_act_neg_s, traces_rest_neg_s = [], [], [], [], [], []
@@ -534,6 +539,8 @@ for index in range(len(SESSIONS['files'])):
                 verbose=False)
     data.build_dFoF(**dFoF_options, verbose=False)
     data.build_running_speed()
+    print(filename)
+    #data.build_pupil()
 
     episodes_ = EpisodeData(data, 
                         quantities=['dFoF'],
@@ -542,7 +549,7 @@ for index in range(len(SESSIONS['files'])):
                         verbose=False)
 
     episodes = EpisodeData(data, 
-                        quantities=['dFoF', 'Pupil', 'Running-Speed'],
+                        quantities=['dFoF', 'Running-Speed'],
                         protocol_name=protocol,
                         prestim_duration=pre_stim, 
                         verbose=False)
@@ -611,7 +618,7 @@ flattened_rest = [row for arr in temp_rest for row in arr]
 diffs_act_all = np.concatenate(diffs_act_s) 
 diffs_rest_all = np.concatenate(diffs_rest_s)  
 
-#why are there nans?
+#why are there nans? =
 diffs_act_all_ = [x for x in diffs_act_all if not np.isnan(x)]
 diffs_rest_all_ = [x for x in diffs_rest_all if not np.isnan(x)]
 
@@ -622,12 +629,11 @@ plot_dFoF(diffs_act_all, diffs_rest_all, protocol=protocol, filename="ALL record
 boxplot_dict = {"title": "Amplitude peak Act vs Rest",
                 "data" : [diffs_act_all_, diffs_rest_all_],
                 "labels" : ["Active", "Rest"], 
-                "colors" : ["greenyellow","darkolivegreen"], 
+                "colors" : ["darkorange","brown"],  #["greenyellow","darkolivegreen"], 
                 "y_label": "Amplitude peak dFoF", 
-                "figsize": (1,3)}
+                "figsize": (1.5,3)}
 
 plot_boxplot(boxplot_dict)
-
 plot_trace_loco(traces_loco_act_s, traces_loco_rest_s)
 
 #%% ALL RESPONSIVE CELLS
@@ -646,18 +652,18 @@ diffs_rest_all_resp = np.concatenate(diffs_rest_resp_s)
 diffs_act_all_resp_ = [x for x in diffs_act_all_resp if not np.isnan(x)]
 diffs_rest_all_resp_ = [x for x in diffs_rest_all_resp if not np.isnan(x)]
 
-#plot_trace_vdFoF(flattened_act_resp, flattened_rest_resp)
-#plot_trace_vdFoF(flattened_act_resp, flattened_rest_resp, aligned=True)
-#plot_dFoF(diffs_act_all_resp, diffs_rest_all_resp, protocol=protocol, filename="ALL recordings", metric="roi")
+plot_trace_vdFoF(flattened_act_resp, flattened_rest_resp)
+plot_trace_vdFoF(flattened_act_resp, flattened_rest_resp, aligned=True)
+plot_dFoF(diffs_act_all_resp, diffs_rest_all_resp, protocol=protocol, filename="ALL recordings", metric="roi")
 
 boxplot_dict = {"title": "Difference baselines Act vs Rest",
                 "data" : [diffs_act_all_resp_, diffs_rest_all_resp_],
                 "labels" : ["Active", "Rest"], 
-                "colors" : ["orangered","maroon"], 
+                "colors" : ["darkorange","brown"], #["orangered","maroon"], 
                 "y_label": "Amplitude peak dFoF", 
                 "figsize": (1,3)}
 
-#plot_boxplot(boxplot_dict)
+plot_boxplot(boxplot_dict)
 
 #%% POSITIVE CELLS
 temp_act_pos = [np.nanmean(traces_act_pos_s[i], axis=0 ) for i in range(len(traces_act_pos_s))]
@@ -682,7 +688,7 @@ plot_dFoF(diffs_act_all_pos, diffs_rest_all_pos, protocol=protocol, filename="AL
 boxplot_dict = {"title": "Amplitude peak Act vs Rest",
                 "data" : [diffs_act_all_pos_, diffs_rest_all_pos_],
                 "labels" : ["Active", "Rest"], 
-                "colors" : ["greenyellow","darkolivegreen"], 
+                "colors" : ["darkorange","brown"], 
                 "y_label": "Amplitude peak dFoF", 
                 "figsize": (1.5,3)}
 
@@ -709,14 +715,14 @@ diffs_rest_all_neg = np.concatenate(diffs_rest_neg_s)
 diffs_act_all_neg_ = [x for x in diffs_act_all_neg if not np.isnan(x)]
 diffs_rest_all_neg_ = [x for x in diffs_rest_all_neg if not np.isnan(x)]
 
-#plot_trace_vdFoF(flattened_act_neg, flattened_rest_neg)
+plot_trace_vdFoF(flattened_act_neg, flattened_rest_neg)
 fig_trace2, _ = plot_trace_vdFoF(flattened_act_neg, flattened_rest_neg, aligned=True)
-#plot_dFoF(diffs_act_all_neg, diffs_rest_all_neg, protocol=protocol, filename="ALL recordings", metric="roi")
+plot_dFoF(diffs_act_all_neg, diffs_rest_all_neg, protocol=protocol, filename="ALL recordings", metric="roi")
 
 boxplot_dict = {"title": "Difference baselines Act vs Rest",
                 "data" : [diffs_act_all_neg_, diffs_rest_all_neg_],
                 "labels" : ["Active", "Rest"], 
-                "colors" : ["greenyellow","darkolivegreen"], 
+                "colors" : ["darkorange","brown"], #["greenyellow","darkolivegreen"], 
                 "y_label": "Amplitude peak dFoF", 
                 "figsize": (1.5,3)}
 
@@ -759,6 +765,8 @@ fig, AX = pt.figure(figsize=(5,5),
 act_resp = boxplot_dict["data"][0] #active
 rest_resp = boxplot_dict["data"][1] #rest
 
+print("ACT : ",act_resp)
+print("REST : ",rest_resp)
 AX.scatter(rest_resp, act_resp)
 
 pt.set_plot(ax=AX, 
@@ -801,7 +809,7 @@ ylim = np.min(y), np.max(y)
 #fig, ax0 = pt.subplots(ncols=1, figsize=(9, 4))
 fig, ax0 = pt.figure(axes=(1, 1), ax_scale=(3, 10), wspace=1.5)
 
-hb = ax0.hexbin(x, y, gridsize=50, bins = 'log', cmap='inferno')
+hb = ax0.hexbin(x, y, gridsize=50, bins = 'log', cmap='viridis')
 ax0.set(xlim=xlim, ylim=ylim)
 cb = fig.colorbar(hb, ax=ax0, label='counts')
 
@@ -813,7 +821,7 @@ x_fit = np.linspace(min(rest_resp), max(rest_resp), 100)
 y_fit = a * x_fit + b
 
 # Plot fit
-ax0.plot(x_fit, y_fit, c="blue")
+ax0.plot(x_fit, y_fit, c="red")
 ax0.plot(x_fit, x_fit, linestyle="--", c="black")
 
 print(f"y = {a:.3f}x + {b:.3f}")
@@ -828,7 +836,7 @@ ax0.text(0.15, 0.95,
         fontsize=12)
 
 pt.set_plot(ax=ax0, 
-            title= f"{protocol}, n={len(boxplot_dict["data"][0])}",
+            #title= f"{protocol}, n={len(boxplot_dict["data"][0])}",
             spines = ['bottom', 'left'],
             ylabel='Amplitude peak active state',
             xlabel='Amplitude peak resting state',

@@ -22,6 +22,7 @@ import numpy as np
 from matplotlib.ticker import MultipleLocator
 import random
 import sys
+from pathlib import Path
 
 #%%
 def plot_loco_pupil(data,
@@ -102,7 +103,7 @@ def plot_loco_pupil(data,
 
 def plot_locomotion(data,  
                     protocol,
-                    running_speed_threshold=0.1,
+                    running_speed_threshold=0.5,
                     pupil_threshold=2.9, 
                     pre_stim = 0):
 
@@ -145,16 +146,17 @@ def plot_locomotion(data,
     
     AX.set_xlabel('Time (s)', fontsize=9)
     AX.set_ylabel('locomotion (cm/s)', fontsize=9)
-    AX.annotate('Visual stimulation', (0.30, 1), color='black', xycoords='axes fraction', va='top', fontsize=7)
+    AX.annotate('Visual stimulation', (0.35, 1), color='black', xycoords='axes fraction', va='top', fontsize=6)
     AX.tick_params(axis='both', labelsize=7, pad=1, direction='out', length=4, width=1)
     AX.grid(False)
     AX.tick_params(axis='both', which='both', bottom=True, left=True)
-    AX.axhline(0.1, color="crimson")
+    AX.axhline(running_speed_threshold, color="crimson")
     
     return fig, AX
 
 #%%
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol',\
+                           'NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -166,7 +168,7 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discar
                  'percentile' : 10. , # for baseline (used only if METHOD= 'percentile' | 'sliding_percentile')
                  'neuropil_correction_factor' : 0.8 }# fraction of neuropil substracted to fluorescence
 
-running_speed_threshold=0.1
+running_speed_threshold=0.5
 pupil_threshold = 2.9
 pre_stim = 1
 
@@ -187,7 +189,7 @@ fig, ax = plot_loco_pupil(data, running_speed_threshold=running_speed_threshold,
 fig, ax = plot_loco_pupil(data, running_speed_threshold=running_speed_threshold, pupil_threshold=pupil_threshold, metric="pupil", mylabel=True)
 
 #%%
-protocol = "moving-dots" #Load episodes by protocol!
+protocol = "static-patch" #Load episodes by protocol!
 
 plot_locomotion(data, 
                 protocol=protocol,

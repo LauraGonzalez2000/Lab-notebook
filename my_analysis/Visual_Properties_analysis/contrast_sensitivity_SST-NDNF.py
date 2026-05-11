@@ -133,14 +133,17 @@ def fill_Responsive(Responsive, group_name, data_s, repetition_keys=['repeat', '
         #percentage_neg = 100*(sum(neg_cond)/data.nROIs)
 
         #for param_i in range(len(resp_cond[0])):
+
+        print("aqui " ,resp_cond[0] )
         if len(resp_cond[0])==16:
             print("angles not merged")
-            if param_i<8:
-                    Responsive["Pos"][group_name]["0.0"][data_i].append(pos_cond[:][:8])
-                    Responsive["Neg"][group_name]["0.0"][data_i].append(neg_cond[:][:8])
-            elif 7<param_i:
-                    Responsive["Pos"][group_name]["90.0"][data_i].append(pos_cond[:][8:16])
-                    Responsive["Neg"][group_name]["90.0"][data_i].append(neg_cond[:][8:16])
+            for param_i in range(16):
+                if param_i<8:
+                        Responsive["Pos"][group_name]["0.0"][data_i].append(pos_cond[:][:8])
+                        Responsive["Neg"][group_name]["0.0"][data_i].append(neg_cond[:][:8])
+                elif 7<param_i:
+                        Responsive["Pos"][group_name]["90.0"][data_i].append(pos_cond[:][8:16])
+                        Responsive["Neg"][group_name]["90.0"][data_i].append(neg_cond[:][8:16])
 
         elif len(resp_cond[0])==8: 
             print("angles merged")
@@ -151,7 +154,7 @@ def fill_Responsive(Responsive, group_name, data_s, repetition_keys=['repeat', '
 
 
 #%% Data
-datafolder_NDNF = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','Ori-contrasts', 'NDNF-Cre','NWBs_contrasts')
+datafolder_NDNF = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','Ori-contrasts', 'NDNF-Cre','NWBs_8contrasts2ori')
 datafolder_SST = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','Ori-contrasts', 'SST-cells_WT_Adult_V1', 'NWBs_contrast')
 
 SESSIONS_SST = scan_folder_for_NWBfiles(datafolder_SST)
@@ -201,11 +204,12 @@ Responsive = {"Pos" : {"SST-Cre" : {"0.0" : [[] for _ in range(len(data_s_SST))]
                                      "both": [[] for _ in range(len(data_s_NDNF))]}}}
 
 
-repetition_keys = ['repeat', 'angle']
+repetition_keys = ['repeat'] #or ['repeat', 'angle'] to merge angles ....arrange
 Responsive = fill_Responsive(Responsive, group_name="SST-Cre",  data_s = data_s_SST, repetition_keys=repetition_keys)
-Responsive = fill_Responsive(Responsive, group_name="NDNF-Cre", data_s = data_s_NDNF, repetition_keys=repetition_keys)
+#Responsive = fill_Responsive(Responsive, group_name="NDNF-Cre", data_s = data_s_NDNF, repetition_keys=repetition_keys)
 
-
+#%%
+Responsive
 #%% PLOT
 #keys = ['SST-Cre'   , 'NDNF-Cre']
 keys = ['SST-Cre']
@@ -216,8 +220,8 @@ colors = ['tab:orange']
 #colors = ['tab:green']
 
 #angle = "0.0"
-#angle = "90.0"
-angle = "both"
+angle = "90.0"
+#angle = "both"
  
 for sign in ["Pos", "Neg"]:
     fig, ax = plot_contrast_responsiveness_(keys=keys, 
@@ -227,7 +231,7 @@ for sign in ["Pos", "Neg"]:
                                             fig_args=dict(ax_scale=(1.5,2)), 
                                             angle=angle, 
                                             ylim=[0,101],  
-                                            means="session")
+                                            means="ROI")
     fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/responsiveness_{sign}.svg'))
     
 

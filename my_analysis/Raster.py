@@ -25,6 +25,8 @@ from matplotlib.transforms import blended_transform_factory
 from sklearn.decomposition import PCA
 import matplotlib.colors as mcolors
 
+from pathlib import Path
+
 
 #%%  FUNCTIONS
 def nonlinear_cmap(cmap, vmin, vmax, exp=0.5, N=256):
@@ -192,8 +194,9 @@ def plot_evoked_pattern(EP_s,
                 order = leaves_list(Zopt)
             elif behavior_split and state== "REST":
                 order = order_mantained #not recalculated, taking the previous one (ACT of the same stim)
-            combined_zerobaseline_ordered = combined_zerobaseline[order, :]
             order_mantained = order
+            combined_zerobaseline_ordered = combined_zerobaseline[order, :]
+            
 
 
         if clustering == "PCA": 
@@ -210,8 +213,9 @@ def plot_evoked_pattern(EP_s,
                 order = valid_indices[pca_order_valid]
             elif behavior_split and state== "REST":
                 order = order_mantained #not recalculated, taking the previous one (ACT of the same stim)
-            combined_zerobaseline_ordered = combined_zerobaseline[order, :]
             order_mantained = order
+            combined_zerobaseline_ordered = combined_zerobaseline[order, :]
+            
 
         if clustering == 'amplitude':
             # -> more intuitive
@@ -228,9 +232,11 @@ def plot_evoked_pattern(EP_s,
                 order = valid_indices[amp_order_valid]
             elif behavior_split and state == "REST":
                 order = order_mantained  # keep ACT order
-
-            combined_zerobaseline_ordered = combined_zerobaseline[order, :]
             order_mantained = order
+
+            order = order_mantained
+            combined_zerobaseline_ordered = combined_zerobaseline[order, :]
+            
 
         axR[column].axvline(0, linestyle='--', linewidth=0.5)
         axR[column].axvline(ep_s[0].time_duration[0], linestyle='--', linewidth=0.5)
@@ -246,7 +252,7 @@ def plot_evoked_pattern(EP_s,
                                                                    N=256)
         
         cmap_graywarm_nl = nonlinear_cmap(cmap_graywarm, vmin=vmin, vmax=vmax, exp = 0.7, N=256)
-
+        print(combined_zerobaseline_ordered)
         axR[column].imshow(combined_zerobaseline_ordered,
                            cmap = cmap_graywarm_nl, #cmap=pt.binary, #pt.plt.cm.plasma #pt.plt.cm.coolwarm
                            aspect='auto', 
@@ -294,13 +300,11 @@ def plot_evoked_pattern(EP_s,
                              fontsize=15,
                              xycoords="axes fraction",
                              clip_on=False)
-        
-
     return fig
 
 #%%
 #LOAD DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
@@ -309,23 +313,25 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discar
                  'percentile' : 10. , # for baseline (used only if METHOD= 'percentile' | 'sliding_percentile')
                  'neuropil_correction_factor' : 0.8 }# fraction of neuropil substracted to fluorescence
 
-data_s = []
+data_s_yann = []
 for index in range(len(SESSIONS['files'])):
     filename = SESSIONS['files'][index]
     data = Data(filename,verbose=False)
     data.build_dFoF(**dFoF_options, verbose=False)
     data.init_visual_stim() #initializes visual stim (7 protocols (experiments) per file)
-    data_s.append(data)
+    data_s_yann.append(data)
 
 #%%
 #protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
-protocols = ["drifting-gratings", "Natural-Images-4-repeats"]
-#protocols = ["drifting-gratings"]
+#protocols = ["drifting-gratings", "Natural-Images-4-repeats"]
+#protocols = ["Natural-Images-4-repeats"]
+protocols = ["drifting-gratings"]
+protocols = ["looming-stim"]
 
 ep_s_ = []
 for protocol in protocols: 
     ep_s = []
-    for i, data in enumerate(data_s): 
+    for i, data in enumerate(data_s_yann): 
         print("File ", i)
         ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed', 'rawFluo'])
         ep.init_visual_stim(data) 
@@ -338,25 +344,25 @@ for protocol in protocols:
 ########################################################################
 for p, protocol in enumerate(protocols):
     ep_s = ep_s_[p]
-    fig = plot_evoked_pattern(EP_s=ep_s, 
-                        quantity='dFoF', 
-                        with_stim_inset=True, 
-                        behavior_split=False, 
-                        clustering = 'amplitude')
-    
-    fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/raster_{p}.svg'))
-    #plot_evoked_pattern(EP_s=ep_s, 
+    #fig = plot_evoked_pattern(EP_s=ep_s, 
     #                    quantity='dFoF', 
-    #                    with_stim_inset=False, 
-    #                    behavior_split=True, 
+    #                    with_stim_inset=True, 
+    #                    behavior_split=False, 
     #                    clustering = 'amplitude')
+    
+    #fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/raster_{p}.svg'))
+    plot_evoked_pattern(EP_s=ep_s, 
+                        quantity='dFoF', 
+                        with_stim_inset=False, 
+                        behavior_split=True, 
+                        clustering = 'amplitude')
 #######################################################################################################################
 #######################################################################################################################
 
 #%% my data ##############################################################
 ##########################################################################
 ##########################################################################
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','vision-survey', 'NDNF-Cre-batch1','NWBs')
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','Vision-survey', 'NDNF-Cre','NWBs')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
@@ -374,7 +380,12 @@ for index in range(len(SESSIONS['files'])):
     data_s.append(data)
 
 #%%
-protocols = ["static-patch"]
+protocols = ["drifting-grating"]
+#protocols = ["drifting-grating", 
+#             "Natural-Images-4-repeats",
+#             'static-patch', 
+#             'looming-stim',
+#             'moving-dots']
 
 ep_s_ = []
 for protocol in protocols: 
@@ -393,21 +404,22 @@ for p, protocol in enumerate(protocols):
                         quantity='dFoF', 
                         with_stim_inset=True, 
                         behavior_split=False)
-    plot_evoked_pattern(EP_s=ep_s, 
-                        quantity='dFoF', 
-                        with_stim_inset=True, 
-                        behavior_split=True)
+    #plot_evoked_pattern(EP_s=ep_s, 
+    #                    quantity='dFoF', 
+    #                    with_stim_inset=True, 
+    #                    behavior_split=True)
 
 
 #%%
 #drifting
-ep = ep_s_[0][0]
+ep = ep_s_[2][24]
 ep.visual_stim
 image =  ep.visual_stim.get_image(0)
 image =  np.rot90(image, k=1)
 print(image)
 
 fig, ax = pt.figure()
+ax.axis("off")
 ax.imshow(image, cmap=pt.plt.cm.binary_r, vmin=0, vmax=1)
 
 #%%
@@ -438,15 +450,16 @@ for index in range(0,251):
 
 #%%
 
-data = data_s[8]
+data = data_s_yann[8]
 #%%
 indexes = []
-for index in range(0,151):
-    if data.visual_stim.experiment['protocol_id'][index]==4: 
+n_tot_ep = len(data.visual_stim.experiment['protocol_id'])
+for index in range(0,n_tot_ep):
+    if data.visual_stim.experiment['protocol_id'][index]==4: #4 for Yann
         #if data.visual_stim.experiment['Image-ID'][index]==4:
             indexes.append(index)
 #%%
-for index in indexes[:10]:
+for index in indexes[:n_tot_ep]:
     print("Image ID", data.visual_stim.experiment['Image-ID'][index])
     image = data.visual_stim.get_image(index=index)
     #NIarray = data.visual_stim.experiment['protocol_id'][index].NIarray

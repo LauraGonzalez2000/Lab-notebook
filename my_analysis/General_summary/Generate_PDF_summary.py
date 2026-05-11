@@ -5,7 +5,7 @@
 import os, sys
 import numpy as np
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.utils import plot_tools as pt
 from physion.analysis.episodes.build import EpisodeData
 from physion.analysis.episodes.trial_statistics import pre_post_statistics

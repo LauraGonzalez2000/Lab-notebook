@@ -361,84 +361,207 @@ class PDF4:
                 self.AXs[key].imshow(image7)
 
 
-class PDF_ori_tuning: 
-    def __init__(self, structure_dict=None, debug=False):
+class PDF_ori_tuning:
+    def __init__(self, structure_dict=None, debug=True):
         if structure_dict is None:
             structure_dict = {}
 
         self.debug = debug
 
-        # --- Create A4 figure (in inches)
-        self.fig = plt.figure(figsize=(8.27, 11.69))
+        # --- A4 figure
+        self.fig = plt.figure(figsize=(8.27, 11.69), constrained_layout=True)
+
+        # --- Grid (12 rows gives good vertical resolution)
+        gs = self.fig.add_gridspec(nrows=12, 
+                                   ncols=3, 
+                                   width_ratios=[1.5, 1, 1])
+
         self.AXs = {}
 
-        # --- Define panels using inch-based coordinates
-        # Format: X0, Y0, DX, DY (in inches)
-        self.AXs['Notes']                       = self.create_panel([0.5, 0.5, 7, 1], 'Notes', hide_axis=True)
-        self.AXs['Traces']                      = self.create_panel([0.5, 1, 7, 2.5], 'Traces', hide_axis=True)
-        self.AXs['Variation dFoF']              = self.create_panel([0.5, 3.5, 4, 5], 'Variation dFoF')
-        self.AXs['Responsiveness vs angle']     = self.create_panel([4.5, 3.5, 4, 5], 'Responsiveness vs angle')
-        self.AXs['Responsiveness per contrast'] = self.create_panel([4.5, 7, 5, 1.5], 'Responsiveness per contrast')
-        self.AXs['Selectivity']                 = self.create_panel([0.5, 7, 5, 1.5], 'Selectivity')
+        # Top full-width
+        self.AXs['Notes']          = self.fig.add_subplot(gs[0:1, 0:2])
+        self.AXs['Traces']         = self.fig.add_subplot(gs[1:4, 0:2])
+        self.AXs['Variation dFoF'] = self.fig.add_subplot(gs[4:6, 0:2])
 
-        self.AXs['Tuning curve']                = self.create_panel([0.5, 9, 5, 1.5], 'Tuning curve')
-        plt.tight_layout()
+        # Middle row: 3 aligned plots
+        self.AXs['Responsiveness vs angle c=0.5'] = self.fig.add_subplot(gs[6:8, 0])
+        self.AXs['Responsiveness vs angle c=1']   = self.fig.add_subplot(gs[6:8, 1])
+        self.AXs['Responsiveness vs angle c=any'] = self.fig.add_subplot(gs[6:8, 2])
 
-    def create_panel(self, coords_in_inches, title=None, hide_axis=False):
-        """
-        coords_in_inches: [x0, y0, dx, dy] in inches
-                          left-to-right, top-to-bottom (A4 layout convention)
-        """
-        fig_w, fig_h = self.fig.get_size_inches()
-        x0, y0, dx, dy = coords_in_inches
+        # Bottom left column (stacked)
+        self.AXs['Responsiveness per contrast'] = self.fig.add_subplot(gs[8:9, 0])
+        self.AXs['Selectivity']                 = self.fig.add_subplot(gs[9:10, 0])
+        self.AXs['Tuning curve']                = self.fig.add_subplot(gs[10:11, 0])
+        # --- Titles + debug
+        for name, ax in self.AXs.items():
+            
+            ax.set_title(name, loc='left', fontsize=9)
 
-        # Convert to bottom-up and normalized coordinates
-        y0 = fig_h - y0 - dy
-        rect_norm = [x0 / fig_w, y0 / fig_h, dx / fig_w, dy / fig_h]
+            ax.set_facecolor((1, 0, 0, 0.08))  # light debug tint
 
-        ax = self.fig.add_axes(rect_norm)
-        if title:
-            ax.set_title(title, loc='left', pad=2, fontsize=8)
-        if hide_axis:
-            ax.axis('off')
+        print("len self.AXs", len(self.AXs))
+        for k, ax in self.AXs.items():
+            print(k, ax)
 
-        return ax
-    
     def fill_PDF(self, 
                  traces, 
                  vdFoF, 
-                 resp_ang, 
+                 resp_ang1,
+                 resp_ang2,
+                 resp_ang3, 
                  resp_con, 
                  selectivity,
                  tun_curve): 
         
-        for key in self.AXs:
-            self.AXs[key].axis('off')
-
-            if key=="Notes": 
-                self.AXs[key].axis('off')
-                txt = "Protocol Orientations and Contrasts "
-                self.AXs[key].text(0.1, 0.9, txt, va='top', ha='left', fontsize=10, wrap=True)
-
-
-            elif key=='Traces':
-                self.AXs[key].imshow(traces)
+        for ax in self.AXs.values():
+            ax.clear()
             
-            elif key=='Variation dFoF':
-                self.AXs[key].imshow(vdFoF)
-                
-            elif key=='Responsiveness vs angle':
-                self.AXs[key].imshow(resp_ang)
+            #ax.text(0.5, 0.5, "DEBUG", ha='center', va='center', fontsize=20)
+        
+        for key, ax in self.AXs.items():
+            #ax.clear()  # safer than axis('off')
 
-            elif key=='Responsiveness per contrast':
-                self.AXs[key].imshow(resp_con)
+            if self.debug:
+                print("debuuug")
+                ax.set_facecolor((1, 0, 0, 0.08))
             
-            elif key=='Selectivity':
-                self.AXs[key].imshow(selectivity)
+            ax.set_title(key, loc='left', fontsize=9)
 
-            elif key=='Tuning curve':
-                self.AXs[key].imshow(tun_curve)
+            if key == "Notes":
+                ax.axis('off')
+                txt = "Protocol 8 Orientations and 2 Contrasts"
+                ax.text(0.01, 0.95, txt, va='top', ha='left', fontsize=10, wrap=True)
+                ax.set_aspect('auto')
+            elif key == 'Traces':
+                ax.imshow(traces, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Variation dFoF':
+                ax.imshow(vdFoF, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Responsiveness vs angle c=0.5':
+                ax.imshow(resp_ang1, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Responsiveness vs angle c=1':
+                ax.imshow(resp_ang2, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Responsiveness vs angle c=any':
+                ax.imshow(resp_ang3, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Responsiveness per contrast':
+                ax.imshow(resp_con, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Selectivity':
+                ax.imshow(selectivity, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Tuning curve':
+                ax.imshow(tun_curve, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+class PDF_contrast_sensitivity:
+    def __init__(self, structure_dict=None, debug=True):
+        if structure_dict is None:
+            structure_dict = {}
+
+        self.debug = debug
+
+        # --- A4 figure
+        self.fig = plt.figure(figsize=(8.27, 11.69), constrained_layout=True)
+
+        # --- Grid (12 rows gives good vertical resolution)
+        gs = self.fig.add_gridspec(nrows=12, 
+                                   ncols=3, 
+                                   width_ratios=[1.5, 1, 1])
+
+        self.AXs = {}
+
+        # Top full-width
+        self.AXs['Notes']          = self.fig.add_subplot(gs[0:1, 0:2])
+        self.AXs['Traces']         = self.fig.add_subplot(gs[1:4, 0:2])
+        self.AXs['Variation dFoF'] = self.fig.add_subplot(gs[4:6, 0:2])
+
+        # Middle row: 3 aligned plots
+        self.AXs['Responsiveness vs angle c=0.5'] = self.fig.add_subplot(gs[6:8, 0])
+        self.AXs['Responsiveness vs angle c=1']   = self.fig.add_subplot(gs[6:8, 1])
+        self.AXs['Responsiveness vs angle c=any'] = self.fig.add_subplot(gs[6:8, 2])
+
+        # --- Titles + debug
+        
+        print("len self.AXs", len(self.AXs))
+        for k, ax in self.AXs.items():
+            print(k, ax)
+
+    def fill_PDF(self, 
+                 traces, 
+                 vdFoF, 
+                 resp_ang1,
+                 resp_ang2,
+                 resp_ang3): 
+        
+        for name, ax in self.AXs.items():
             
+            ax.set_title(name, loc='left', fontsize=9)
+
+            ax.set_facecolor((1, 0, 0, 0.08))  # light debug tint
+
+        
+        for ax in self.AXs.values():
+            ax.clear()
+            
+            #ax.text(0.5, 0.5, "DEBUG", ha='center', va='center', fontsize=20)
+        
+        for key, ax in self.AXs.items():
+            #ax.clear()  # safer than axis('off')
+
+            if self.debug:
+                print("debuuug")
+                ax.set_facecolor((1, 0, 0, 0.08))
+            
+            ax.set_title(key, loc='left', fontsize=9)
+
+            if key == "Notes":
+                ax.axis('off')
+                txt = "Protocol 8 Orientations and 2 Contrasts"
+                ax.text(0.01, 0.95, txt, va='top', ha='left', fontsize=10, wrap=True)
+                ax.set_aspect('auto')
+            elif key == 'Traces':
+                ax.imshow(traces, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Variation dFoF':
+                ax.imshow(vdFoF, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Responsiveness vs angle c=0.5':
+                ax.imshow(resp_ang1, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Responsiveness vs angle c=1':
+                ax.imshow(resp_ang2, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
+
+            elif key == 'Responsiveness vs angle c=any':
+                ax.imshow(resp_ang3, aspect='auto')
+                ax.set_aspect('auto')
+                ax.axis('off')
 
 
 class PDF_angle_contrast:

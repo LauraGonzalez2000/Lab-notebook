@@ -21,6 +21,8 @@ from utils_.my_math import calc_stats, plot_stats
 import numpy as np
 import pandas as pd
 import matplotlib.colors as mcolors
+
+from pathlib import Path
 #%% 
 ####################################################################################################
 #################################### RESPONSIVENESS DYNAMICS #######################################
@@ -31,7 +33,9 @@ def generate_Resp_ROI_dict(data_s, protocols=[''], metric = "category", state='a
 
     #initialize
     nROIS = sum(data.nROIs for data in data_s)
-    protocols = protocols = [p for p in data_s[0].protocols if (p != 'grey-20min')]
+
+    if protocols == ['']:
+        protocols = [p for p in data_s[0].protocols if (p != 'grey-20min')]
     #Resp_ROI_dict = {f"ROI_{i}": dict.fromkeys(protocols, None) for i in range(nROIS)}
     Resp_ROI_dict = {f"ROI_{i}": {p: [] for p in protocols} for i in range(nROIS)}
     print(Resp_ROI_dict)
@@ -224,9 +228,12 @@ def generate_behav_corr_ROI_dict(data_s, protocols=[''], subprotocols=False):
 
 def generate_input_data(Resp_ROI_dict, prot1, prot2, categories=("Positive", "NS", "Negative")):
     input_data = {src: {dst + "_": 0 for dst in categories} for src in categories}
+    print("input data before", input_data)
     for ROI, responses in Resp_ROI_dict.items():
-        src = responses[prot1]
-        dst = responses[prot2] + "_"
+        print("responses 1:",responses[prot1][0])
+        print("responses 2:",responses[prot2][0])
+        src = responses[prot1][0]
+        dst = responses[prot2][0] + "_"
         input_data[src][dst] += 1
     return input_data
 
@@ -263,7 +270,7 @@ cmap_graywarm = mcolors.LinearSegmentedColormap.from_list("graywarm",
 #%%
 if __name__ == "__main__":
     #%%
-    datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
+    datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
     SESSIONS = scan_folder_for_NWBfiles(datafolder)
     SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -282,13 +289,17 @@ if __name__ == "__main__":
         data.build_facemotion()
         data.build_pupil_diameter()
         data_s.append(data)
-
-    protocols = ["static-patch", 
-                "drifting-gratings", 
-                "Natural-Images-4-repeats", 
-                "moving-dots", 
-                "random-dots", 
-                "looming-stim"]
+#%%
+    #protocols = ["static-patch", 
+    #            "drifting-gratings", 
+    #            "Natural-Images-4-repeats"]
+    
+    protocols = ["moving-dots",
+                 "random-dots",
+                 "static-patch",
+                 "looming-stim", 
+                 "Natural-Images-4-repeats", 
+                 "drifting-gratings"]
 
 
     #%% CATEGORICAL DATA
@@ -299,8 +310,8 @@ if __name__ == "__main__":
     #%% LOAD DATA
     Resp_ROI_dict = Resp_ROI_dict_c_all
     #%% ALLUVIAL 
-    prot1 = "drifting-gratings"
-    prot2 = "looming-stim"
+    #prot1 = "static-patch"
+    #prot2 = "drifting-gratings"
     #--------------------------------
     #prot1="drifting-gratings"
     #prot2="Natural-Images-4-repeats"
@@ -316,6 +327,9 @@ if __name__ == "__main__":
     #---------------------------------
     #prot1="looming-stim"
     #prot2="static-patch"
+    #--------------------------------
+    prot1="Natural-Images-4-repeats"
+    prot2="static-patch"
 
     input_data = generate_input_data(Resp_ROI_dict, prot1, prot2)
 
@@ -341,10 +355,11 @@ if __name__ == "__main__":
 
     #%% CONTINOUS DATA - NO SUBPROTOCOLS
     Resp_ROI_dict_v_all = generate_Resp_ROI_dict(data_s, metric="value", state="all", subprotocols=False)
-    Resp_ROI_dict_v_act = generate_Resp_ROI_dict(data_s,  metric="value", state="active", subprotocols=False)
-    Resp_ROI_dict_v_rest = generate_Resp_ROI_dict(data_s,  metric="value", state="rest", subprotocols=False)
+    #Resp_ROI_dict_v_act = generate_Resp_ROI_dict(data_s,  metric="value", state="active", subprotocols=False)
+    #Resp_ROI_dict_v_rest = generate_Resp_ROI_dict(data_s,  metric="value", state="rest", subprotocols=False)
     #%% CONTINOUS DATA - SUBPROTOCOLS
-    Resp_ROI_dict_v_all_ = generate_Resp_ROI_dict(data_s, metric="value", state="all", subprotocols=True)
+    Resp_ROI_dict_v_all_ = generate_Resp_ROI_dict(data_s, protocols=protocols, metric="value", state="all", subprotocols=True)
+    #%%
     Resp_ROI_dict_v_act_ = generate_Resp_ROI_dict(data_s,  metric="value", state="active", subprotocols=True)
     Resp_ROI_dict_v_rest_ = generate_Resp_ROI_dict(data_s,  metric="value", state="rest", subprotocols=True)
 
@@ -366,29 +381,18 @@ if __name__ == "__main__":
 
     df = pd.concat(expanded_cols, axis=1)
 
-    #mapping = {'Positive': vmax, 'Negative': vmin, 'NS': 0}
-    #df_numeric = df.replace(mapping)
-
-    #df = df.sample(n=70) #zoom
-    #df = df.sort_values(by="looming-stim", ascending=False)
-
     # ROI response vs STIM 
     fig, AX = pt.figure(figsize=(5,10), 
-                        ax_scale=(2, 10)) 
+                        ax_scale=(3, 10)) 
             
     cmap_graywarm_nl = nonlinear_cmap(cmap_graywarm, vmin=vmin, vmax=vmax, exp = 0.7, N=256)
-
-    print(np.max(df.values))
-    print(np.min(df.values))
-    print(df.values[7][0])
-
-    print(df)
 
     AX.imshow(df.values, 
             aspect='auto', 
             cmap= cmap_graywarm_nl, 
             vmin = vmin,
-            vmax = vmax)
+            vmax = vmax, 
+            interpolation='nearest')
 
     pt.bar_legend(AX, 
                 colorbar_inset=dict(rect=[1.1,.1,.04,.8], facecolor=None),
@@ -410,9 +414,38 @@ if __name__ == "__main__":
                 xticks_labels=df.columns,
                 xticks_rotation=90,
                 fontsize=8)
+    
+    # positions entre colonnes
+    #AX.set_xticks(np.arange(-0.5, df.shape[1], 1), minor=True)
 
-    for i in np.arange(0.5, df.shape[1]):
-        AX.axvline(x=i, color='black', linewidth=0.5)
+    # grille verticale uniquement
+    #AX.grid(which='minor', axis='x', color='black', linewidth=0.5)
+
+    # optionnel : enlever les ticks mineurs visibles
+    #AX.tick_params(which='minor', bottom=False)
+
+    #for i in range(df.shape[1]):
+    #    AX.axvline(x=i, color='black', linewidth=0.5)
+
+    # grille = séparateurs entre cellules
+    #AX.grid(which='major', color='black', linewidth=0.5)
+
+
+    #x = np.arange(-0.5, df.shape[1], 1)
+    #AX.vlines(x, *AX.get_ylim(), colors='black', linewidth=0.5)
+
+    #AX.set_xlim(-0.5, df.shape[1] - 0.5)
+
+    #for i in range(df.shape[1] + 1):
+    #    AX.axvline(i - 0.5, color='black', linewidth=0.5)
+
+
+    #for i in range(df.shape[1] + 1):
+    #    AX.axvline(x=i - 0.5, color='black', linewidth=0.5, antialiased=False)
+
+    #for i in np.arange(0.5, df.shape[1]):
+        #AX.axvline(x=i, color='black', linewidth=0.5)
+    #    AX.axvline(x=i, color='black', linewidth=0.7, antialiased=False)
 
     #%% STIM vs STIM similarity
     # Convert to matrix
@@ -562,102 +595,105 @@ if __name__ == "__main__":
     ########################################################################################
     ########################################################################################
     # CONTROL GROUP - columns shuffled
+    diag_control_s = []
+    for i in range(100):
+        # Convert to matrix
+        df_act  = pd.DataFrame.from_dict(Resp_ROI_dict_v_act_).T
+        df_rest = pd.DataFrame.from_dict(Resp_ROI_dict_v_rest_).T
 
-    # Convert to matrix
-    df_act  = pd.DataFrame.from_dict(Resp_ROI_dict_v_act_).T
-    df_rest = pd.DataFrame.from_dict(Resp_ROI_dict_v_rest_).T
+        expanded_cols = []
 
-    expanded_cols = []
+        for col in df_act.columns:
+            expanded = df_act[col].apply(pd.Series)
+            expanded.columns = [f"{col}-{i+1}" for i in expanded.columns]
+            expanded_cols.append(expanded)
 
-    for col in df_act.columns:
-        expanded = df_act[col].apply(pd.Series)
-        expanded.columns = [f"{col}-{i+1}" for i in expanded.columns]
-        expanded_cols.append(expanded)
+        df_act = pd.concat(expanded_cols, axis=1)
+        df_act = df_act.sample(frac=1, axis=1)
 
-    df_act = pd.concat(expanded_cols, axis=1)
-    df_act = df_act.sample(frac=1, axis=1)
+        expanded_cols = []
 
-    expanded_cols = []
+        for col in df_rest.columns:
+            expanded = df_rest[col].apply(pd.Series)
+            expanded.columns = [f"{col}-{i+1}" for i in expanded.columns]
+            expanded_cols.append(expanded)
 
-    for col in df_rest.columns:
-        expanded = df_rest[col].apply(pd.Series)
-        expanded.columns = [f"{col}-{i+1}" for i in expanded.columns]
-        expanded_cols.append(expanded)
+        df_rest = pd.concat(expanded_cols, axis=1)
+        df_rest = df_rest.sample(frac=1, axis=1)
 
-    df_rest = pd.concat(expanded_cols, axis=1)
-    df_rest = df_rest.sample(frac=1, axis=1)
+        # Compute stimulus × stimulus similarity (dot product across ROIs)
+        stim_similarity_control = {'corr' : [], 
+                                'values': np.ones((len(df_act.columns), len(df_act.columns)))*np.nan}
+        for i in range(stim_similarity_control['values'].shape[0]):
+            for j in range(stim_similarity_control['values'].shape[0]):
+                if i==j:
+                    print("corr : ", df_act.columns[i], df_rest.columns[j])
+                    stim_similarity_control['corr'].append([f'{df_act.columns[i]}', f'{df_rest.columns[j]}'])
+                stim_similarity_control['values'][i,j] = df_act[df_act.columns[i]].corr(df_rest[df_rest.columns[j]])
 
-    # Compute stimulus × stimulus similarity (dot product across ROIs)
-    stim_similarity_control = {'corr' : [], 
-                            'values': np.ones((len(df_act.columns), len(df_act.columns)))*np.nan}
-    for i in range(stim_similarity_control['values'].shape[0]):
-        for j in range(stim_similarity_control['values'].shape[0]):
-            if i==j:
-                print("corr : ", df_act.columns[i], df_rest.columns[j])
-                stim_similarity_control['corr'].append([f'{df_act.columns[i]}', f'{df_rest.columns[j]}'])
-            stim_similarity_control['values'][i,j] = df_act[df_act.columns[i]].corr(df_rest[df_rest.columns[j]])
+        #PLOT
+        pt.set_style("manuscript")
+        # Plot heatmap
+        fig, AX = pt.figure(figsize=(10,10),ax_scale=(2, 3.5) )
+        vmin = -1 #np.min(stim_similarity.values)
+        vmax = 1 #np.max(stim_similarity.values)
+        AX.imshow(stim_similarity_control['values'], 
+                aspect='auto', 
+                cmap= pt.plt.cm.PiYG, 
+                vmin =vmin, 
+                vmax=vmax)
 
-    #PLOT
-    pt.set_style("manuscript")
-    # Plot heatmap
-    fig, AX = pt.figure(figsize=(10,10),ax_scale=(2, 3.5) )
-    vmin = -1 #np.min(stim_similarity.values)
-    vmax = 1 #np.max(stim_similarity.values)
-    AX.imshow(stim_similarity_control['values'], 
-            aspect='auto', 
-            cmap= pt.plt.cm.PiYG, 
-            vmin =vmin, 
-            vmax=vmax)
+        cmap_PiGY_nl = nonlinear_cmap(pt.plt.cm.PiYG, vmin=vmin, vmax=vmax, exp = 0.7, N=256)
 
-    cmap_PiGY_nl = nonlinear_cmap(pt.plt.cm.PiYG, vmin=vmin, vmax=vmax, exp = 0.7, N=256)
+        pt.bar_legend(AX,
+                    colorbar_inset=dict(rect=[1.1,.1,.04,.8]),
+                    colormap = cmap_PiGY_nl, #colormap=pt.binary, #pt.plt.cm.plasma #pt.plt.cm.coolwarm
+                    bar_legend_args={"fontsize":10},
+                    bounds=[vmin, vmax],
+                    ticks = [vmin, 0, vmax],
+                    #bar_legend_args={'size':2}, 
+                    label='Cross-correlation \nsimilarity')
+        #              no_ticks=True)
 
-    pt.bar_legend(AX,
-                colorbar_inset=dict(rect=[1.1,.1,.04,.8]),
-                colormap = cmap_PiGY_nl, #colormap=pt.binary, #pt.plt.cm.plasma #pt.plt.cm.coolwarm
-                bar_legend_args={"fontsize":10},
-                bounds=[vmin, vmax],
-                ticks = [vmin, 0, vmax],
-                #bar_legend_args={'size':2}, 
-                label='Cross-correlation \nsimilarity')
-    #              no_ticks=True)
+        pt.set_plot(AX, 
+                    spines = ['bottom', 'left'],
+                    yticks=range(len(df_act.columns)), 
+                    yticks_labels=df_act.columns,
+                    xticks=range(len(df_rest.columns)), 
+                    xticks_labels=df_rest.columns,
+                    xticks_rotation=90,
+                    fontsize=5)
+        
+        diag_control = np.diag(stim_similarity_control['values'])
 
-    pt.set_plot(AX, 
-                spines = ['bottom', 'left'],
-                yticks=range(len(df_act.columns)), 
-                yticks_labels=df_act.columns,
-                xticks=range(len(df_rest.columns)), 
-                xticks_labels=df_rest.columns,
-                xticks_rotation=90,
-                fontsize=5)
+        diag_control_s.append(diag_control)
 
+#%%
     ###########################################################################
     # plot correlation between same stimuli for rest and run visual stimuli response vectors (diagonal of the previous matrices)
-
-    diag_control = np.diag(stim_similarity_control['values'])
-    print(stim_similarity_control['corr'])
-    print(diag_control)
-
+    diag_control = np.mean(diag_control_s, axis=0)
     diag_test = np.diag(stim_similarity['values'])
-    print(stim_similarity['corr'])
-    print(diag_test)
 
     fig, AX = pt.figure(figsize=(5,5), 
-                        ax_scale=(2, 3)) 
+                        ax_scale=(1, 3)) 
 
-    labels_ = [ 'rest vs run similarity', 'control']
+    AX.boxplot(x=[diag_test, diag_control], 
+               positions = [0,1],
+                tick_labels=["rest \nvs run\n similarity", "chance"], 
+                widths = 0.6, 
+                orientation='vertical')
 
-    AX.boxplot(x=[diag_control, diag_test], 
-            tick_labels=["chance", "rest vs run\n similarity"], 
-            widths = 0.6)
-
-    stats = calc_stats("My title ", diag_control, diag_test, debug=True)
+    stats = calc_stats("My title ", diag_test, diag_control,  debug=True)
     plot_stats(ax=AX, n_groups = 2, stats=stats)
 
     n = len(diag_control)
 
-    AX.scatter(np.ones(n), diag_control)      # chance at x = 1
-    AX.scatter(np.ones(n) * 2, diag_test)    # real at x = 2
+    AX.scatter(np.zeros(n) , diag_test)      # real at x = 1
+    AX.scatter(np.ones(n) , diag_control)    # chance at x = 2
 
+    print("diag control ", diag_control)
+    print("diag test ", diag_test)
+    
     for i in range(n):
         corr_group = stim_similarity['corr'][i]
         value_test = diag_test[i]
@@ -665,9 +701,9 @@ if __name__ == "__main__":
             if stim_similarity_control['corr'][k][0] == corr_group[0]:
                 value_control = diag_control[k]
                 break;
-        AX.plot([1, 2], [value_control, value_test], alpha=0.3, c="black")
+        AX.plot([0, 1], [value_test, value_control], alpha=0.3, c="black")
 
-    pt.set_plot(ax=AX, xticks = [1,2],
+    pt.set_plot(ax=AX, xticks = [0,1],
                 yticks = [-0.2, 0, 0.2, 0.4, 0.6, 0.8, 1],
                 ylim= [-0.3,1.2],
                 ylabel='correlation', title='')
@@ -747,3 +783,35 @@ if __name__ == "__main__":
     for i in np.arange(0.5, df.shape[1]):
         AX.axvline(x=i, color='black', linewidth=0.5)
 
+
+
+#%%
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','Processed', "2022_12_14", '13-27-41')
+NIdaq = np.load(os.path.join(datafolder, 'NIdaq.npy'), allow_pickle=True)
+NIdaq_start = np.load(os.path.join(datafolder, 'NIdaq.start.npy'), allow_pickle=True)
+face_cam_summary = np.load(os.path.join(datafolder, 'FaceCamera-summary.npy'), allow_pickle=True)
+face_cam_ = np.load(os.path.join(datafolder, 'facemotion.npy'), allow_pickle=True)
+visual_stim = np.load(os.path.join(datafolder, 'visual-stim.npy'), allow_pickle=True)
+data = visual_stim[()]
+#print(data)
+data = NIdaq[()]   # extract the dictionary from the 0-d array
+analog = data['analog']
+plt.plot(data['analog'][0])#[12000:12500])
+
+#%%
+import sys, os
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','Ori-contrasts', 'NDNF-Cre','Processed', "2025_12_29", '16-23-48')
+NIdaq = np.load(os.path.join(datafolder, 'NIdaq.npy'), allow_pickle=True)
+print(NIdaq)
+NIdaq_ = NIdaq[()]
+print(NIdaq_.keys())
+#data = NIdaq[()]   # extract the dictionary from the 0-d array
+#analog = data['analog']
+#plt.plot(data['analog'][0][12000:12500])
+
+#%%
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','2NatIm8contrasts', 'NDNF-Cre','Processed', "2026_04_21", '15-11-13')
+NIdaq = np.load(os.path.join(datafolder, 'NIdaq.npy'), allow_pickle=True)
+data = NIdaq[()]   # extract the dictionary from the 0-d array
+analog = data['analog']
+plt.plot(data['analog'][0][12000:12500])

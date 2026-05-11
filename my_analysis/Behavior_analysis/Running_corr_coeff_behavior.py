@@ -23,6 +23,7 @@ from utils_.General_overview_episodes import compute_high_arousal_cond
 
 import random
 import itertools
+from pathlib import Path
 
 running_speed_threshold = 0.5  #cm/s
 
@@ -320,8 +321,10 @@ def plot_average_visually_evoked_activity(data_s,
 ###################################################################################################################
 #running overview necessary to filter good files. 
 #%% Load Data
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol',\
+                           'NDNF-WT-Dec-2022','NWBs_rebuilt')
 #datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch1','NWBs_run')
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
+#datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 
 #%%
@@ -340,7 +343,7 @@ data.build_dFoF(**dFoF_options, verbose=True)
 #%%
 plot_locomotion(data, 
                 protocol='static-patch',
-                running_speed_threshold=0.5,
+                running_speed_threshold=0.1,
                 pupil_threshold=2.9, 
                 pre_stim = 1)
 
