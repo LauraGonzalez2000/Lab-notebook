@@ -491,13 +491,17 @@ class PDF_contrast_sensitivity:
 
         # Top full-width
         self.AXs['Notes']          = self.fig.add_subplot(gs[0:1, 0:2])
-        self.AXs['Traces']         = self.fig.add_subplot(gs[1:4, 0:2])
-        self.AXs['Variation dFoF'] = self.fig.add_subplot(gs[4:6, 0:2])
+        self.AXs['Traces']         = self.fig.add_subplot(gs[1:5, 0:2])
+        self.AXs['Variation dFoF'] = self.fig.add_subplot(gs[5:6, 0:2])
 
         # Middle row: 3 aligned plots
-        self.AXs['Responsiveness vs angle c=0.5'] = self.fig.add_subplot(gs[6:8, 0])
-        self.AXs['Responsiveness vs angle c=1']   = self.fig.add_subplot(gs[6:8, 1])
-        self.AXs['Responsiveness vs angle c=any'] = self.fig.add_subplot(gs[6:8, 2])
+        #self.AXs['Responsiveness vs contrast a=0'] = self.fig.add_subplot(gs[6:8, 0])
+        #self.AXs['Responsiveness vs contrast a=90']   = self.fig.add_subplot(gs[6:8, 1])
+        #self.AXs['Responsiveness vs contrast a=any'] = self.fig.add_subplot(gs[6:8, 2])
+
+        self.AXs['Responsiveness vs contrast Im=1'] = self.fig.add_subplot(gs[6:8, 0])
+        self.AXs['Responsiveness vs contrast Im=2']   = self.fig.add_subplot(gs[6:8, 1])
+        self.AXs['Responsiveness vs contrast Im=any'] = self.fig.add_subplot(gs[6:8, 2])
 
         # --- Titles + debug
         
@@ -535,7 +539,8 @@ class PDF_contrast_sensitivity:
 
             if key == "Notes":
                 ax.axis('off')
-                txt = "Protocol 8 Orientations and 2 Contrasts"
+                #txt = "Protocol 2 Orientations and 8 Contrasts"
+                txt = "Protocol 2 Natural Images and 8 Contrasts"
                 ax.text(0.01, 0.95, txt, va='top', ha='left', fontsize=10, wrap=True)
                 ax.set_aspect('auto')
             elif key == 'Traces':
@@ -548,17 +553,17 @@ class PDF_contrast_sensitivity:
                 ax.set_aspect('auto')
                 ax.axis('off')
 
-            elif key == 'Responsiveness vs angle c=0.5':
+            elif key == 'Responsiveness vs contrast Im=1': #Im 1 #vs contrast a=0
                 ax.imshow(resp_ang1, aspect='auto')
                 ax.set_aspect('auto')
                 ax.axis('off')
 
-            elif key == 'Responsiveness vs angle c=1':
+            elif key == 'Responsiveness vs contrast Im=2': #vs contrast a=90
                 ax.imshow(resp_ang2, aspect='auto')
                 ax.set_aspect('auto')
                 ax.axis('off')
 
-            elif key == 'Responsiveness vs angle c=any':
+            elif key == 'Responsiveness vs contrast Im=any': #vs contrast a=any
                 ax.imshow(resp_ang3, aspect='auto')
                 ax.set_aspect('auto')
                 ax.axis('off')

@@ -261,7 +261,8 @@ def plot_dFoF_of_protocol(data_s,
         mode = "average"
  
     if data_s[0].protocols[0]=="ff-gratings-2orientations-8contrasts-15repeats" or \
-       data_s[0].protocols[0]=="ff-gratings-8orientation-2contrasts-15repeats":
+       data_s[0].protocols[0]=="ff-gratings-8orientation-2contrasts-15repeats" or \
+       data_s[0].protocols[0]=="2NaturalImages-8contrasts-15repeats":
         fig, AX = pt.figure(axes_extents=[[[1,1]] * 8,   # row 0: contrast 1 - generalize
                                           [[1,1]] * 8],  # row 1: contrast 2 - generalize
                             top=8, 
@@ -279,6 +280,7 @@ def plot_dFoF_of_protocol(data_s,
                         left = 2, 
                         figsize=(10,4),
                         ax_scale=(1.2, 1.5))  
+        
 
     session_traces = []
 
@@ -347,7 +349,8 @@ def plot_dFoF_of_protocol(data_s,
                     mean_trace = np.mean(traces, axis=0)
                     sem_trace  = np.std(traces, axis=0) / np.sqrt(len(traces))
 
-                if data.protocols[0]=="ff-gratings-2orientations-8contrasts-15repeats":
+                if data.protocols[0]=="ff-gratings-2orientations-8contrasts-15repeats" or \
+                   data.protocols[0]=="2NaturalImages-8contrasts-15repeats":
                     ax = AX[key1_idx][key2_idx]
                 elif data.protocols[0]=="ff-gratings-8orientation-2contrasts-15repeats":
                     ax = AX[key2_idx][key1_idx]

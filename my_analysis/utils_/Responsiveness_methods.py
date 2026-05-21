@@ -9,11 +9,12 @@ sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.utils import plot_tools as pt
 from physion.analysis.episodes.trial_statistics import pre_post_statistics
 from physion.analysis.episodes.build import EpisodeData
+from physion.analysis.read_NWB import Data
 from scipy import stats
 
-#%% FUNCTIONS
+import matplotlib as plt
 
-#%%
+#%% FUNCTIONS
 
 # COMPUTES RESPONSIVENESS
 
@@ -100,14 +101,20 @@ def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.5, repetition_keys 
         if filtering_cond is None:
             filtering_cond = ep.find_episode_cond() # True everywhere
 
+        #fix this part!!
         if param == 0.5 or param == 1 : 
             cond = ep.find_episode_cond(key='contrast', 
+                                            value=param) &\
+                                            filtering_cond
+        elif param == 1.0 or param == 2.0: 
+            cond = ep.find_episode_cond(key='Image-ID', 
                                             value=param) &\
                                             filtering_cond
         elif param == 0.0 or param == 90.0 : 
             cond = ep.find_episode_cond(key='angle', 
                                             value=param) &\
                                             filtering_cond
+            
         elif param == None: 
             cond = ep.find_episode_cond() & filtering_cond  #True everywhere
 
@@ -282,11 +289,6 @@ def study_responsiveness_all(SESSIONS, protocol):
         colors = []
 
         for roi_n in range(data.nROIs):
-            
-            #summary_data = ep.compute_summary_data(stat_test_props,
-            #                                    exclude_keys=['repeat', 'angle', 'contrast'],
-            #                                    response_significance_threshold=0.05,
-            #                                    response_args=dict(roiIndex=roi_n))
             
             roi_summary_data = pre_post_statistics(ep,
                                                    episode_cond = ep.find_episode_cond(),
@@ -699,6 +701,10 @@ def get_vals_resp_vs_param(data_s, p, repetition_keys = ['repeat'], means='ROIs'
         neg_cond_s  = np.concatenate(neg_cond_s, axis=0)
         ns_cond_s   = np.concatenate(ns_cond_s, axis=0)
 
+        print("resp cond s :", resp_cond_s)
+        print("len(resp cond s):", len(resp_cond_s))
+        
+
         resp_col_sums = np.sum(resp_cond_s, axis=0)
         pos_col_sums  = np.sum(pos_cond_s, axis=0)
         neg_col_sums  = np.sum(neg_cond_s, axis=0)
@@ -779,7 +785,10 @@ def plot_resp_vs_param(data_s, p, AX, test = "angle", repetition_keys = ['repeat
     x = ep.varied_parameters[test]
 
     for x, vals, color in zip([x,x,x],[pos, neg, ns],["red", "blue", "grey"]):
+        print("HERE")
+        print(x)
         print(vals)
+        print(color)
         pt.plot(x, vals, ax=AX, color = color)
        
     pt.set_plot(ax = AX, 
