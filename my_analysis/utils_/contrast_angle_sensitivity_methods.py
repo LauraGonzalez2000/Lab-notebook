@@ -16,6 +16,11 @@ from physion.analysis.protocols.orientation_tuning import\
         plot_orientation_tuning_curve, \
         plot_selectivity, \
         plot_responsiveness
+from physion.analysis.protocols.orientation_tuning import compute_tuning_response_per_cells,\
+                                                          plot_orientation_tuning_curve, \
+                                                          plot_selectivity, \
+                                                          plot_responsiveness
+from physion.analysis.read_NWB import Data
 
 
 from utils_.General_overview_episodes import\
@@ -25,15 +30,15 @@ from utils_.Responsiveness_methods import\
         plot_protocol_responsiveness,\
         plot_resp_vs_param
 
-from Visual_Properties_analysis.Orientation_Tuning import compute_tunings2
+#from Visual_Properties_analysis.Orientation_Tuning import compute_tunings2
 
 from PDF_layout import PDF, PDF2, PDF3, PDF_ori_tuning, PDF_contrast_sensitivity
 from matplotlib.backends.backend_pdf import PdfPages
-
 from scipy import stats
-
 import random
 import time
+
+
 
 #%% FUNCTIONS
 
@@ -399,7 +404,7 @@ def plot_barplot2_per_protocol(data_s, AX,idx,  p, subplots_n):
     
     return 0
 
-def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
+def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n, subset_rois=None):
     mean_vals_s = []  # store per-session mean responses
 
     for data in data_s:
@@ -424,10 +429,12 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
         # Extract ROI mean values
         mean_vals = [float(np.ravel(v)[0]) if np.size(v) > 0 else np.nan for v in summary_data['value']]
         print("mean vals!", mean_vals)
-        # Pad/truncate to 5 elements
+        # Pad/truncate to subplots_n elements
         target_len = subplots_n
         mean_vals = (mean_vals + [np.nan] * target_len)[:target_len]
 
+        mean_vals_s.append(mean_vals)
+        """
         if p == 'ff-gratings-8orientation-2contrasts-15repeats':
             #reorder mean_vals
             mean_vals_ = np.zeros(16)
@@ -452,6 +459,7 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
             mean_vals = mean_vals_
 
         mean_vals_s.append(mean_vals)
+        """
 
     ep0 = EpisodeData(data_s[0], protocol_name=p[0], quantities=['dFoF'])
 
@@ -496,19 +504,19 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n):
     
     return 0
 
-def generate_figures_GROUP(data_s, subplots_n, test="angle", means='ROI', protocols = []):
+def generate_figures_GROUP(data_s, subplots_n, test="angle", means='ROI', protocols = [], ylim= [-0.2,1.0], subset_rois=None):
     start_time = time.time()  
 
     if protocols == []:
         protocols = [p for p in data_s[0].protocols 
                         if (p != 'grey-10min') and (p != 'black-2min') and (p != 'quick-spatial-mapping')]
 
-    fig_traces, _     = plot_dFoF_of_protocol(data_s=data_s, protocol=protocols[0])
+    fig_traces, _     = plot_dFoF_of_protocol(data_s=data_s, protocol=protocols[0], ylim=ylim, subset_rois=subset_rois)
     elapsed = time.time() - start_time
     print(f"Fig 1 ok: {elapsed:.2f} seconds")
 
-    fig_vdFoF, AX2  = pt.figure(axes = (1,1), ax_scale=(1, 1))
-    plot_barplot2_of_protocol(data_s, AX2, 0, protocols, subplots_n)
+    fig_vdFoF, AX2  = pt.figure(axes = (1,1), ax_scale=(3, 1))
+    plot_barplot2_of_protocol(data_s, AX2, 0, protocols, subplots_n, subset_rois = subset_rois)
 
     fig_resp_vs_param, AX3 = pt.figure(axes = (1,1),figsize=(2,2), ax_scale=(2, 5))
     fig_resp_vs_param2, AX4 = pt.figure(axes = (1,1),figsize=(2,2), ax_scale=(2, 5))
@@ -516,19 +524,19 @@ def generate_figures_GROUP(data_s, subplots_n, test="angle", means='ROI', protoc
 
     
     if protocols[0] == "2NaturalImages-8contrasts-15repeats":
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat"], means='ROI', param=1.0)
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat"], means='ROI', param=2.0)
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX5, test = test, repetition_keys = ["repeat", "Image-ID"], means='ROI', param=None)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat", "Image-ID"], means='ROI', param=1.0, param_type="Image-ID", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat", "Image-ID"], means='ROI', param=2.0, param_type="Image-ID", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX5, test = test, repetition_keys = ["repeat", "Image-ID"], means='ROI', param=None, param_type="Image-ID", subset_rois = subset_rois)
 
     elif protocols[0] == 'ff-gratings-2orientations-8contrasts-15repeats':
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat", "angle"], means=means, param=0.0)
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat", "angle"], means=means, param=90.0)
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX5, test = test, repetition_keys = ["repeat", "angle"], means=means, param=None)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat", "angle"], means=means, param=0.0, param_type="angle", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat", "angle"], means=means, param=90.0, param_type="angle", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX5, test = test, repetition_keys = ["repeat", "angle"], means=means, param=None, param_type="angle", subset_rois = subset_rois)
     
     elif protocols[0] == 'ff-gratings-8orientation-2contrasts-15repeats':
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat"], means=means, param=0.5)
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat"], means=means, param=1.0)
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX5, test = test, repetition_keys = ["repeat", "contrast"], means=means, param=None)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat"], means=means, param=0.5, param_type="contrast", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat"], means=means, param=1.0, param_type="contrast", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX5, test = test, repetition_keys = ["repeat", "contrast"], means=means, param=None, param_type="contrast", subset_rois = subset_rois)
 
     elif protocols[0] == 'drifting-grating':
         plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat", "angle"], means=means, param=None)
@@ -607,3 +615,58 @@ def create_group_PDF(fig1, fig2, fig3, fig4, fig5, fig6=None, fig7=None, fig8=No
 
     return 0
 
+def compute_tunings(files, stat_test_props, response_significance_threshold):
+        for contrast in [0.5, 1.0]:
+                Tunings = []
+                for f in files:
+                        print(' - analyzing file: %s  [...] ' % f)
+                        data = Data(f, verbose=False)
+                        data.build_dFoF(neuropil_correction_factor=0.9,
+                                        percentile=10., 
+                                        verbose=False)
+
+                        protocol_name=[p for p in data.protocols if 'ff-gratings' in p][0]
+                        Episodes = EpisodeData(data, 
+                                        quantities=['dFoF'], 
+                                        protocol_name=protocol_name, 
+                                        verbose=False)
+                        
+                        Tuning = compute_tuning_response_per_cells(data, 
+                                                                   Episodes, 
+                                                                   quantity='dFoF', 
+                                                                   stat_test_props=stat_test_props, 
+                                                                   response_significance_threshold = response_significance_threshold, 
+                                                                   contrast=contrast)
+                        Tuning['nROIs_original'] = data.original_nROIs
+                        Tuning['nROIs_final'] = data.nROIs
+                        Tuning['nROIs_responsive'] = np.sum(Tuning['significant_ROIs'])
+                        Tuning['subject'] = data.nwbfile.subject.subject_id
+                        Tunings.append(Tuning)
+                # saving data
+                np.save(os.path.join(tempfile.tempdir, 'Tunings_WT_contrast-%.1f.npy' % contrast),Tunings)
+        return 0
+
+def compute_tunings2(data_s, stat_test_props, response_significance_threshold):
+        for contrast in [0.5, 1.0]:
+                Tunings = []
+                for data in data_s:
+                        protocol_name=[p for p in data.protocols if 'ff-gratings' in p][0]
+                        Episodes = EpisodeData(data, 
+                                        quantities=['dFoF'], 
+                                        protocol_name=protocol_name, 
+                                        verbose=False)
+                        
+                        Tuning = compute_tuning_response_per_cells(data, 
+                                                                   Episodes, 
+                                                                   quantity='dFoF', 
+                                                                   stat_test_props=stat_test_props, 
+                                                                   response_significance_threshold = response_significance_threshold, 
+                                                                   contrast=contrast)
+                        Tuning['nROIs_original'] = data.original_nROIs
+                        Tuning['nROIs_final'] = data.nROIs
+                        Tuning['nROIs_responsive'] = np.sum(Tuning['significant_ROIs'])
+                        Tuning['subject'] = data.nwbfile.subject.subject_id
+                        Tunings.append(Tuning)
+                # saving data
+                np.save(os.path.join(tempfile.tempdir, 'Tunings_WT_contrast-%.1f.npy' % contrast),Tunings)
+        return 0

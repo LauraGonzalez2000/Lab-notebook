@@ -6,14 +6,16 @@
 import os, sys
 import numpy as np
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
+
 from physion.dataviz.imaging import find_roi_coords, show_CaImaging_FOV
 
 import physion.utils.plot_tools as pt
 
 sys.path += ['../']
 from Visual_Properties_analysis.Responsiveness_dynamics import generate_Resp_ROI_dict
+
 from pathlib import Path
 
 #%%

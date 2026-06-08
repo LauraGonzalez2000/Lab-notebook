@@ -18,55 +18,7 @@ import matplotlib as plt
 
 # COMPUTES RESPONSIVENESS
 
-def calc_responsiveness(ep, nROIs, alpha=0.05, t_window = 1.5):
-
-    '''
-    Calculates the responsiveness of each ROI in an episode
-    
-    takes as arguments : 
-        ep -> episode
-        nROIs -> number of ROIs
-
-    optional arguments : 
-        alpha -> response significance threshold, usually equal to 0.05
-        t_window -> time in s defining the time window to calculate responsiveness 
-                    (ex: last 1.5 s of the visual stim vs 1.5 s before stim starts) 
-    
-    returns : 
-        3 lists of booleans (each of len nROIs)
-            Responsive ROIs (True if resposive, False if not)
-            Positively responsive ROIs (True if positively responsive, False if not)
-            Negatively responsive ROIs (True if negatively responsive, False if not)
-    '''
-
-    session_summary = {'significant':[], 'value':[]}
-
-    t0 = max([0, ep.time_duration[0]-t_window])
-    stat_test_props = dict(interval_pre=[-t_window,0],                                   
-                           interval_post=[t0, t0+t_window],                                   
-                           test='ttest', 
-                           sign='both')
-
-    for roi_n in range(nROIs):
-        roi_summary_data = pre_post_statistics(ep,
-                                               episode_cond = ep.find_episode_cond(),
-                                               response_args = dict(roiIndex=roi_n),
-                                               response_significance_threshold=alpha,
-                                               stat_test_props=stat_test_props,
-                                               repetition_keys=['repeat'])
-
-        session_summary['significant'].append(bool(roi_summary_data['significant'][0]))
-        session_summary['value'].append(roi_summary_data['value'][0])
-
-    resp_cond = np.array(session_summary['significant'])                  
-    pos_cond = resp_cond & ([session_summary['value'][i]>0 for i in range(len(session_summary['value']))])
-    neg_cond = resp_cond & ([session_summary['value'][i]<0 for i in range(len(session_summary['value']))])
-
-    print(f"{sum(resp_cond)} significant ROI \n ({np.sum(pos_cond)} positive, {np.sum(neg_cond)} negative) \n out of {len(session_summary['significant'])} ROIs")
-
-    return resp_cond, pos_cond, neg_cond
-
-def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.5, repetition_keys = ['repeat'], filtering_cond=None, param=None):
+def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.5, repetition_keys = ['repeat'], filtering_cond=None, param=None, param_type=None):
 
     '''
     Calculates the responsiveness of each ROI in an episode, calculating for each combination of parameters given
@@ -88,7 +40,7 @@ def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.5, repetition_keys 
             Positively responsive ROIs (True if positively responsive, False if not)
             Negatively responsive ROIs (True if negatively responsive, False if not)
     '''
-
+    print("hey")
     session_summary = {'significant':[], 'value':[]}
 
     for roi_n in range(nROIs):
@@ -100,22 +52,13 @@ def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.5, repetition_keys 
         
         if filtering_cond is None:
             filtering_cond = ep.find_episode_cond() # True everywhere
-
-        #fix this part!!
-        if param == 0.5 or param == 1 : 
-            cond = ep.find_episode_cond(key='contrast', 
+ 
+        #write this directly in 1 line? 
+        if param_type != None :
+            cond = ep.find_episode_cond(key=f'{param_type}', 
                                             value=param) &\
                                             filtering_cond
-        elif param == 1.0 or param == 2.0: 
-            cond = ep.find_episode_cond(key='Image-ID', 
-                                            value=param) &\
-                                            filtering_cond
-        elif param == 0.0 or param == 90.0 : 
-            cond = ep.find_episode_cond(key='angle', 
-                                            value=param) &\
-                                            filtering_cond
-            
-        elif param == None: 
+        elif param_type == None: 
             cond = ep.find_episode_cond() & filtering_cond  #True everywhere
 
         roi_summary_data = pre_post_statistics(ep,
@@ -131,17 +74,11 @@ def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.5, repetition_keys 
     resp_cond = np.array(session_summary['significant'])
     pos_cond = resp_cond & np.array([session_summary_value >0 for session_summary_value in session_summary['value'] ])
     neg_cond = resp_cond & np.array([session_summary_value <0 for session_summary_value in session_summary['value'] ])
-    
-    #resp_col_sums = np.sum(resp_cond, axis=0)
-    #pos_col_sums = np.sum(pos_cond, axis=0)
-    #neg_col_sums = np.sum(neg_cond, axis=0)
-
-    #for i in range(len(resp_cond[0])):
-    #    print(f"For parameters condition {i}, there is {resp_col_sums[i]} responsive ROIs ({pos_col_sums[i]} positive and {neg_col_sums[i]} negative) out of {len(resp_cond)} ROIs.")
-    
+    print("hey2")
     return resp_cond, pos_cond, neg_cond
 
 def compute_responsiveness(ep, nROIs, alpha=0.05, window=1.5):
+    
     '''
     Calculates the responsiveness of each ROI in an episode
     
@@ -667,7 +604,7 @@ def plot_contrast_responsiveness_(keys,
         
         return fig, ax
 
-def get_vals_resp_vs_param(data_s, p, repetition_keys = ['repeat'], means='ROIs', param=None):
+def get_vals_resp_vs_param(data_s, p, repetition_keys = ['repeat'], means='ROIs', param=None, param_type=None, subset_rois = None):
 
     nROIs = 0
 
@@ -685,7 +622,8 @@ def get_vals_resp_vs_param(data_s, p, repetition_keys = ['repeat'], means='ROIs'
                                                              alpha = 0.05, 
                                                              t_window = 1.5, 
                                                              repetition_keys = repetition_keys, 
-                                                             param=param)
+                                                             param=param, 
+                                                             param_type=param_type)
         resp_cond_s.append(resp_cond)
         pos_cond_s.append(pos_cond)
         neg_cond_s.append(neg_cond)
@@ -725,6 +663,10 @@ def get_vals_resp_vs_param(data_s, p, repetition_keys = ['repeat'], means='ROIs'
 
             nROIs = data_s[file_i].nROIs
 
+            print("kk", subset_rois)
+
+            subset_rois_i = subset_rois[file_i]
+
             final_resp_ = []
             final_pos_ = []
             final_neg_ = []
@@ -732,22 +674,41 @@ def get_vals_resp_vs_param(data_s, p, repetition_keys = ['repeat'], means='ROIs'
 
             for contrast_i in range(len(resp_cond_s[file_i][0])):
 
-                count_resp = np.sum([resp_cond_s[file_i][roi_i][contrast_i] for roi_i in range(nROIs)])
-                final_resp = (count_resp/nROIs)*100
-                final_resp_.append(final_resp)
+                if subset_rois == None: 
 
-                count_pos = np.sum([pos_cond_s[file_i][roi_i][contrast_i] for roi_i in range(nROIs)])
-                final_pos = (count_pos/nROIs)*100
-                final_pos_.append(final_pos)
+                    count_resp = np.sum([resp_cond_s[file_i][roi_i][contrast_i] for roi_i in range(nROIs)])
+                    final_resp = (count_resp/nROIs)*100
+                    final_resp_.append(final_resp)
 
-                count_neg = np.sum([neg_cond_s[file_i][roi_i][contrast_i] for roi_i in range(nROIs)])
-                final_neg = (count_neg/nROIs)*100
-                final_neg_.append(final_neg)
+                    count_pos = np.sum([pos_cond_s[file_i][roi_i][contrast_i] for roi_i in range(nROIs)])
+                    final_pos = (count_pos/nROIs)*100
+                    final_pos_.append(final_pos)
 
-                count_ns = np.sum([ns_cond_s[file_i][roi_i][contrast_i] for roi_i in range(nROIs)])
-                final_ns = (count_ns/nROIs)*100
-                final_ns_.append(final_ns)
-            
+                    count_neg = np.sum([neg_cond_s[file_i][roi_i][contrast_i] for roi_i in range(nROIs)])
+                    final_neg = (count_neg/nROIs)*100
+                    final_neg_.append(final_neg)
+
+                    count_ns = np.sum([ns_cond_s[file_i][roi_i][contrast_i] for roi_i in range(nROIs)])
+                    final_ns = (count_ns/nROIs)*100
+                    final_ns_.append(final_ns)
+                else:
+                    count_resp = np.sum([resp_cond_s[file_i][roi_i][contrast_i] for roi_i in subset_rois_i])
+                    final_resp = (count_resp/nROIs)*100
+                    final_resp_.append(final_resp)
+
+                    count_pos = np.sum([pos_cond_s[file_i][roi_i][contrast_i] for roi_i in subset_rois_i])
+                    final_pos = (count_pos/nROIs)*100
+                    final_pos_.append(final_pos)
+
+                    count_neg = np.sum([neg_cond_s[file_i][roi_i][contrast_i] for roi_i in subset_rois_i])
+                    final_neg = (count_neg/nROIs)*100
+                    final_neg_.append(final_neg)
+
+                    count_ns = np.sum([ns_cond_s[file_i][roi_i][contrast_i] for roi_i in subset_rois_i])
+                    final_ns = (count_ns/nROIs)*100
+                    final_ns_.append(final_ns)
+
+
             final_resp_sessions.append(final_resp_)
             final_pos_sessions.append(final_pos_)
             final_neg_sessions.append(final_neg_)
@@ -759,10 +720,25 @@ def get_vals_resp_vs_param(data_s, p, repetition_keys = ['repeat'], means='ROIs'
 
     return final_pos_, final_neg_, final_ns_
 
-def plot_resp_vs_param(data_s, p, AX, test = "angle", repetition_keys = ['repeat'], means = 'session', param=None, values = None):
+def plot_resp_vs_param(data_s, 
+                       p, 
+                       AX, 
+                       test = "angle", 
+                       repetition_keys = ['repeat'], 
+                       means = 'session', 
+                       param=None, 
+                       values = None, 
+                       param_type=None, 
+                       subset_rois = None):
 
     if values == None: 
-        pos, neg, ns = get_vals_resp_vs_param(data_s, p, repetition_keys = repetition_keys, means = means, param=param)
+        pos, neg, ns = get_vals_resp_vs_param(data_s, 
+                                              p, 
+                                              repetition_keys = repetition_keys, 
+                                              means = means, 
+                                              param=param, 
+                                              param_type=param_type, 
+                                              subset_rois = subset_rois)
     else: 
         pos, neg, ns = values[0], values[1], values[2]
     
@@ -852,7 +828,7 @@ def plot_responsiveness_per_protocol(data_s,  protocols=[''], type='means', beha
 
             nROIs.append(data.nROIs)
 
-            ep = EpisodeData(data, protocol_name=p, quantities=['dFoF', 'running_speed'])
+            ep = EpisodeData(data, protocol_name=p, quantities=['dFoF', 'Running-Speed'])
             HMcond = np.array(compute_high_arousal_cond(ep, pre_stim=1, running_speed_threshold=0.1, metric="locomotion"))
 
             sig_list = []
@@ -1082,3 +1058,55 @@ def plot_responsiveness_per_protocol(data_s,  protocols=[''], type='means', beha
 
         
     return fig, AX
+
+
+
+'''
+def calc_responsiveness(ep, nROIs, alpha=0.05, t_window = 1.5):
+
+    
+    Calculates the responsiveness of each ROI in an episode
+    
+    takes as arguments : 
+        ep -> episode
+        nROIs -> number of ROIs
+
+    optional arguments : 
+        alpha -> response significance threshold, usually equal to 0.05
+        t_window -> time in s defining the time window to calculate responsiveness 
+                    (ex: last 1.5 s of the visual stim vs 1.5 s before stim starts) 
+    
+    returns : 
+        3 lists of booleans (each of len nROIs)
+            Responsive ROIs (True if resposive, False if not)
+            Positively responsive ROIs (True if positively responsive, False if not)
+            Negatively responsive ROIs (True if negatively responsive, False if not)
+    
+
+    session_summary = {'significant':[], 'value':[]}
+
+    t0 = max([0, ep.time_duration[0]-t_window])
+    stat_test_props = dict(interval_pre=[-t_window,0],                                   
+                           interval_post=[t0, t0+t_window],                                   
+                           test='ttest', 
+                           sign='both')
+
+    for roi_n in range(nROIs):
+        roi_summary_data = pre_post_statistics(ep,
+                                               episode_cond = ep.find_episode_cond(),
+                                               response_args = dict(roiIndex=roi_n),
+                                               response_significance_threshold=alpha,
+                                               stat_test_props=stat_test_props,
+                                               repetition_keys=['repeat'])
+
+        session_summary['significant'].append(bool(roi_summary_data['significant'][0]))
+        session_summary['value'].append(roi_summary_data['value'][0])
+
+    resp_cond = np.array(session_summary['significant'])                  
+    pos_cond = resp_cond & ([session_summary['value'][i]>0 for i in range(len(session_summary['value']))])
+    neg_cond = resp_cond & ([session_summary['value'][i]<0 for i in range(len(session_summary['value']))])
+
+    print(f"{sum(resp_cond)} significant ROI \n ({np.sum(pos_cond)} positive, {np.sum(neg_cond)} negative) \n out of {len(session_summary['significant'])} ROIs")
+
+    return resp_cond, pos_cond, neg_cond
+'''
