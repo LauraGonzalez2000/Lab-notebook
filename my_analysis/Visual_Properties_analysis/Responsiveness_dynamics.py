@@ -419,32 +419,38 @@ if __name__ == "__main__":
                                                  metric="value", 
                                                  state="all", 
                                                  subprotocols=False)
-    #Resp_ROI_dict_v_act = generate_Resp_ROI_dict(data_s,  
-    #                                             metric="value", 
-    #                                             state="active", 
-    #                                             subprotocols=False)
-    #Resp_ROI_dict_v_rest = generate_Resp_ROI_dict(data_s,  
-    #                                              metric="value", 
-    #                                              state="rest", 
-    #                                              subprotocols=False)
+    Resp_ROI_dict_v_act = generate_Resp_ROI_dict(data_s,  
+                                                 metric="value", 
+                                                 state="active", 
+                                                 subprotocols=False)
+    Resp_ROI_dict_v_rest = generate_Resp_ROI_dict(data_s,  
+                                                  metric="value", 
+                                                  state="rest", 
+                                                  subprotocols=False)
     
     #%% GENERATE CONTINOUS DATA DICT - SUBPROTOCOLS
-    Resp_ROI_dict_v_all_ = generate_Resp_ROI_dict(data_s, 
+    data_s_ = [data_s[5]]
+
+    #%%
+    data = data_s[5]
+    print(data.nROIs)
+    #%%
+    Resp_ROI_dict_v_all_ = generate_Resp_ROI_dict(data_s_, 
                                                   protocols=protocols, 
                                                   metric="value", 
                                                   state="all", 
                                                   subprotocols=True)
-    Resp_ROI_dict_v_act_ = generate_Resp_ROI_dict(data_s,  
+    Resp_ROI_dict_v_act_ = generate_Resp_ROI_dict(data_s_,  
                                                   metric="value", 
                                                   state="active", 
                                                   subprotocols=True)
-    Resp_ROI_dict_v_rest_ = generate_Resp_ROI_dict(data_s,  
+    Resp_ROI_dict_v_rest_ = generate_Resp_ROI_dict(data_s_,  
                                                    metric="value", 
                                                    state="rest", 
                                                    subprotocols=True)
 
     #%% LOAD THE DESIRED DATA (_all , _act, _rest, _all_ , _act_, _rest_)
-    Resp_ROI_dict = Resp_ROI_dict_v_all_
+    Resp_ROI_dict = Resp_ROI_dict_v_rest_
     #%%
     ######################################################################
     ##############################   RASTER PLOTS    #####################

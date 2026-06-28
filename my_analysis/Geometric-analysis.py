@@ -53,7 +53,7 @@ def get_colors(Resp_ROI_dict_c_all, protocol):
     return roi_colors
 
 #%% OVERALL VIEW PER FILE AND PER VISUAL_STIMULUS
-data_s_ = data_s[8:10]
+data_s_ = data_s
 
 protocols = ["static-patch", 
              "drifting-gratings",

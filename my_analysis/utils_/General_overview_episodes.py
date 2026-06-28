@@ -82,7 +82,7 @@ def get_trial_average_trace(episodes,
     """
     Return trial-averaged response trace (mean and SEM) for one Episodes object.
     """
-
+    print("step 4 : ", roiIndex)
     if condition is None:
         condition = np.ones(np.sum(episodes.protocol_cond_in_full_data), 
                             dtype=bool)
@@ -90,6 +90,12 @@ def get_trial_average_trace(episodes,
         condition = condition[episodes.protocol_cond_in_full_data]
 
     avg_dim = 'episodes' if with_std_over_rois else 'ROIs'
+    
+    print("get trial avg, ", quantity, condition, roiIndex, avg_dim)
+    
+    print("n_rois =", getattr(episodes, quantity).shape[1])
+    print("roiIndex =", roiIndex)
+    print("max roiIndex =", np.max(roiIndex))
     
     response = episodes.get_response2D(quantity=quantity,
                                        episode_cond=condition,
@@ -113,6 +119,8 @@ def plot_dFoF_of_protocol(data_s,
         subset_rois = None,  
         ylim = [-2, 0.15],
         norm=True,
+        opto=False,
+        color_trace = 'k', 
         subplots_n=5):
     
     """
@@ -135,16 +143,17 @@ def plot_dFoF_of_protocol(data_s,
     metric : str or None
         Metric to split high/low arousal conditions.
     """
-    
+
     # select sessions
     if dataIndex is not None:
         mode = "single"
     else:
         mode = "average"
- 
+    
+    print("protocols ! ", data_s[0].protocols)
     if data_s[0].protocols[0]=="ff-gratings-2orientations-8contrasts-15repeats" or\
        data_s[0].protocols[0]=="ff-gratings-8orientation-2contrasts-15repeats" or\
-       data_s[0].protocols[0]=="2NaturalImages-8contrasts-15repeats":
+       data_s[0].protocols[0]=="2NaturalImages-8contrasts-15repeats" :
         fig, AX = pt.figure(axes_extents=[[[1,1]] * 8,   
                                           [[1,1]] * 8],  
                             top=8, 
@@ -162,27 +171,88 @@ def plot_dFoF_of_protocol(data_s,
                         left = 2, 
                         figsize=(10,4),
                         ax_scale=(1.2, 1.5))  
+    
+    #NDNF old protocol
+    elif data_s[0].protocols[0] == 'moving-dots':
         
+        if protocol == "static-patch" :
+            fig, AX = pt.figure(axes_extents=[[[1,1]] * 2],
+                            top=8, 
+                            bottom = 8,
+                            right = 2, 
+                            left = 2, 
+                            figsize=(10,4),
+                            ax_scale=(1.2, 1.5))  
+        
+        if protocol ==  "drifting-gratings":
+            fig, AX = pt.figure(axes_extents=[[[1,1]] * 4],
+                            top=8, 
+                            bottom = 8,
+                            right = 2, 
+                            left = 2, 
+                            figsize=(10,4),
+                            ax_scale=(1.2, 1.5))  
+        
+        if protocol == "Natural-Images-4-repeats":
+            print("here it should go!!")
+            fig, AX = pt.figure(axes_extents=[[[1,1]] * 5],
+                            top=8, 
+                            bottom = 8,
+                            right = 2, 
+                            left = 2, 
+                            figsize=(10,4),
+                            ax_scale=(1.2, 1.5))  
+
+    
+    elif data_s[0].protocols[0]=="ffSG-8ori-2ctrst+1sPrePostOpto" :
+        fig, AX = pt.figure(axes_extents=[[[1,1]] * 8,  
+                                          [[1,1]] * 8,
+                                          [[1,1]] * 8, 
+                                          [[1,1]] * 8],  
+                            top=8, 
+                            bottom = 8,
+                            right = 2, 
+                            left = 2, 
+                            figsize=(10,4),
+                            ax_scale=(1.2, 1.5))  
+
+    for i, ax in enumerate(np.ravel(AX)):
+        print(i, ax)
+      
     session_traces = []
 
+    session_traces_control = []
+    session_traces_opto = []
+
     for i, data in enumerate(data_s):
-        
+
         if subset_rois is not None : 
             roiIndex = subset_rois[i]
         else: 
             roiIndex = None
 
         if subset_rois is not None: 
-            print("file : ", i," selected cells :", roiIndex," total rois :", data.nROIs)
+            print("file : ", i,", selected cells :", roiIndex," total rois :", data.nROIs)
         else: 
-            print("file : ", i," all ", data.nROIs, " rois selected")
-            
-        episodes = EpisodeData(data,
-                               quantities=['dFoF', 'running_speed'],
-                               protocol_name=protocol,
-                               prestim_duration=1,
-                               verbose=False)
+            print("file  ", i,", all ", data.nROIs, " rois selected")
+        
+        if opto: 
+            episodes = EpisodeData(data,
+                                quantities=['dFoF', 'running_speed', 'LED'],
+                                protocol_name=protocol,
+                                prestim_duration=2, 
+                                verbose=False)
+            LED_on = episodes.LED.mean(axis=1)>0
+            print("LED ON : ", LED_on)
 
+        else: 
+            episodes = EpisodeData(data,
+                                quantities=['dFoF', 'running_speed'],
+                                protocol_name=protocol,
+                                prestim_duration=1, #FIX
+                                verbose=False)
+        
+        
         if metric is not None:
             cond = compute_high_arousal_cond(episodes, pupil_threshold, 
                                              running_speed_threshold, 
@@ -190,6 +260,7 @@ def plot_dFoF_of_protocol(data_s,
         else:
             cond = episodes.find_episode_cond()
         
+        print("cond", cond)
         varied_keys = [k for k in episodes.varied_parameters.keys()
                         if k!='repeat']
 
@@ -202,12 +273,29 @@ def plot_dFoF_of_protocol(data_s,
                     stim_cond = episodes.find_episode_cond(key=[varied_keys[0], 
                                                                 varied_keys[1]],
                                                         value=[key1_, key2_])
-                    mean_trace, sem_trace = get_trial_average_trace(episodes,
-                                                    roiIndex=roiIndex,
-                                                    condition=stim_cond & cond)
-                    if mean_trace is not None:
-                        session_traces.append((key2_idx, key1_idx, 
-                                               mean_trace, sem_trace))
+                    if opto: 
+                        mean_trace_control, sem_trace_control = get_trial_average_trace(episodes,
+                                                        roiIndex=roiIndex,
+                                                        condition=stim_cond & cond & ~LED_on)
+                        
+                        mean_trace_opto, sem_trace_opto = get_trial_average_trace(episodes,
+                                                        roiIndex=roiIndex,
+                                                        condition=stim_cond & cond & LED_on)
+                        
+                        if mean_trace_control is not None:
+                            session_traces_control.append((key2_idx, key1_idx, 
+                                                mean_trace_control, sem_trace_control))
+                        if mean_trace_opto is not None:
+                            session_traces_opto.append((key2_idx, key1_idx, 
+                                                mean_trace_opto, sem_trace_opto))
+                            
+                    else: 
+                        mean_trace, sem_trace = get_trial_average_trace(episodes,
+                                                        roiIndex=roiIndex,
+                                                        condition=stim_cond & cond)
+                        if mean_trace is not None:
+                            session_traces.append((key2_idx, key1_idx, 
+                                                mean_trace, sem_trace))
 
         elif len(varied_keys)==1:
             
@@ -216,6 +304,11 @@ def plot_dFoF_of_protocol(data_s,
             for key1_idx, key1_ in enumerate(key1):
                 stim_cond = episodes.find_episode_cond(key=varied_keys[0],
                                                        value=key1_)
+                print('kk')
+                print(episodes)
+                print(roiIndex)
+                print(stim_cond & cond)
+                print("hh")
                 mean_trace, sem_trace = get_trial_average_trace(episodes,
                                                                 roiIndex=roiIndex,
                                                                 condition=stim_cond & cond)
@@ -229,65 +322,174 @@ def plot_dFoF_of_protocol(data_s,
         for key2_idx in range(len(key2)):
             for key1_idx in range(len(key1)):
                 
-                traces = [tr for c, o, tr, se in session_traces 
-                          if c == key2_idx and o == key1_idx]
-                sems   = [se for c, o, tr, se in session_traces 
-                          if c == key2_idx and o == key1_idx]
+                if opto: 
+                    traces_control = [tr for c, o, tr, se in session_traces_control 
+                            if c == key2_idx and o == key1_idx]
+                    sems_control   = [se for c, o, tr, se in session_traces_control 
+                            if c == key2_idx and o == key1_idx]
+                    
+                    traces_opto = [tr for c, o, tr, se in session_traces_opto 
+                            if c == key2_idx and o == key1_idx]
+                    sems_opto   = [se for c, o, tr, se in session_traces_opto 
+                            if c == key2_idx and o == key1_idx]
 
-                if not traces:
-                    continue
+                    if (not traces_control) or (not traces_opto):
+                        continue
 
-                if mode == "single":
-                    mean_trace = traces[0]
-                    sem_trace  = sems[0]
-                else:
-                    mean_trace = np.nanmean(traces, axis=0)
-                    sem_trace  = np.nanstd(traces, axis=0) / np.sqrt(len(traces))
+                    if mode == "single":
+                        mean_trace_control = traces_control[0]
+                        sem_trace_control  = sems_control[0]
 
-                if data.protocols[0]=="ff-gratings-2orientations-8contrasts-15repeats" or \
-                   data.protocols[0]=="2NaturalImages-8contrasts-15repeats":
-                    ax = AX[key1_idx][key2_idx]
-                elif data.protocols[0]=="ff-gratings-8orientation-2contrasts-15repeats":
-                    ax = AX[key2_idx][key1_idx]
+                        mean_trace_opto = traces_opto[0]
+                        sem_trace_opto  = sems_opto[0]
+                    else:
+                        mean_trace_control = np.nanmean(traces_control, axis=0)
+                        sem_trace_control  = np.nanstd(traces_control, axis=0) / np.sqrt(len(traces_control))
+                        
+                        mean_trace_opto = np.nanmean(traces_opto, axis=0)
+                        sem_trace_opto  = np.nanstd(traces_opto, axis=0) / np.sqrt(len(traces_opto))
+
+                    if data.protocols[0]=="ffSG-8ori-2ctrst+1sPrePostOpto":
+                        ax_control = AX[2*key2_idx][key1_idx]
+                        ax_opto  = AX[2*key2_idx+1][key1_idx]
+                    
+                    if norm : 
+                        mean_trace_control_norm = mean_trace_control - np.nanmean(mean_trace_control[0:1000])
+                        ax_control.plot(episodes.t, mean_trace_control_norm, color=color_trace)
+                        ax_control.fill_between(episodes.t,
+                                    mean_trace_control_norm - sem_trace_control,
+                                    mean_trace_control_norm + sem_trace_control,
+                                    color=color_trace,
+                                    alpha=0.3)
+                        
+                        mean_trace_opto_norm = mean_trace_opto - np.nanmean(mean_trace_opto[0:1000])
+                        ax_opto.plot(episodes.t, mean_trace_opto_norm, color=color_trace)
+                        ax_opto.fill_between(episodes.t,
+                                    mean_trace_opto_norm - sem_trace_opto,
+                                    mean_trace_opto_norm + sem_trace_opto,
+                                    color=color_trace,
+                                    alpha=0.3)
+                        ax_opto.axvspan(-1, 3, color='navy',alpha=0.2, lw=0, zorder=-10)
+                        
+                    else: 
+                        ax_control.plot(episodes.t, mean_trace_control, color=color_trace)
+                        ax_control.fill_between(episodes.t,
+                                    mean_trace_control - sem_trace_control,
+                                    mean_trace_control + sem_trace_control,
+                                    color=color_trace,
+                                    alpha=0.3)
+                        
+                        ax_opto.plot(episodes.t, mean_trace_opto, color=color_trace)
+                        ax_opto.fill_between(episodes.t,
+                                    mean_trace_opto - sem_trace_opto,
+                                    mean_trace_opto + sem_trace_opto,
+                                    color=color_trace,
+                                    alpha=0.3)
+                        ax_opto.axvspan(-1, 3, color='navy',alpha=0.2, lw=0, zorder=-10)
+
+
+                    time_max = episodes.time_duration[0] + 1 #assumes prestim 1
+
+                    ymin, ymax = ax_control.get_ylim()
+                    dy = ymax-ymin
+                    ylim = ylim  #[ymin-0.7*dy,ymax+0.7*dy]
+                    #ylim_fixed = ylim
+
+                    pt.set_plot(ax_control, 
+                                spines = ['left', 'bottom'],
+                                xticks=np.arange(-1, time_max+1, 1), 
+                                xlabel='Time (s)',
+                                xlim=[episodes.t[0], episodes.t[-1]], 
+                                ylim=ylim)
                 
-                if norm : 
-                    mean_trace_norm = mean_trace - np.nanmean(mean_trace[0:1000])
-                    ax.plot(episodes.t, mean_trace_norm, color='k')
-                    ax.fill_between(episodes.t,
-                                mean_trace_norm - sem_trace,
-                                mean_trace_norm + sem_trace,
-                                color='k',
-                                alpha=0.3)
+                    ax_control.axvspan(0,
+                            episodes.time_duration[0],
+                            color='lightgrey',
+                            alpha=0.5,
+                            zorder=0)
+                    
+
+
+                    ymin, ymax = ax_opto.get_ylim()
+                    dy = ymax-ymin
+                    ylim = ylim  #[ymin-0.7*dy,ymax+0.7*dy]
+                    #ylim_fixed = ylim
+
+                    pt.set_plot(ax_opto, 
+                                spines = ['left', 'bottom'],
+                                xticks=np.arange(-1, time_max+1, 1), 
+                                xlabel='Time (s)',
+                                xlim=[episodes.t[0], episodes.t[-1]], 
+                                ylim=ylim)
+                
+                    ax_opto.axvspan(0,
+                            episodes.time_duration[0],
+                            color='lightgrey',
+                            alpha=0.5,
+                            zorder=0)
+                    
                 else: 
-                    ax.plot(episodes.t, mean_trace, color='k')
-                    ax.fill_between(episodes.t,
-                                mean_trace - sem_trace,
-                                mean_trace + sem_trace,
-                                color='k',
-                                alpha=0.3)
+                    traces = [tr for c, o, tr, se in session_traces 
+                            if c == key2_idx and o == key1_idx]
+                    sems   = [se for c, o, tr, se in session_traces 
+                            if c == key2_idx and o == key1_idx]
+
+                    if not traces:
+                        continue
+
+                    if mode == "single":
+                        mean_trace = traces[0]
+                        sem_trace  = sems[0]
+                    else:
+                        mean_trace = np.nanmean(traces, axis=0)
+                        sem_trace  = np.nanstd(traces, axis=0) / np.sqrt(len(traces))
+
+                    if data.protocols[0]=="ff-gratings-2orientations-8contrasts-15repeats" or \
+                       data.protocols[0]=="2NaturalImages-8contrasts-15repeats":
+                        ax = AX[key1_idx][key2_idx]
+                    elif data.protocols[0]=="ff-gratings-8orientation-2contrasts-15repeats":
+                        ax = AX[key2_idx][key1_idx]
+                    elif data.protocols[0]=="ffSG-8ori-2ctrst+1sPrePostOpto":
+                        ax = AX[key2_idx][key1_idx]
+
+                    
+                    if norm : 
+                        mean_trace_norm = mean_trace - np.nanmean(mean_trace[0:1000])
+                        ax.plot(episodes.t, mean_trace_norm, color=color_trace)
+                        ax.fill_between(episodes.t,
+                                    mean_trace_norm - sem_trace,
+                                    mean_trace_norm + sem_trace,
+                                    color=color_trace,
+                                    alpha=0.3)
+                    else: 
+                        ax.plot(episodes.t, mean_trace, color=color_trace)
+                        ax.fill_between(episodes.t,
+                                    mean_trace - sem_trace,
+                                    mean_trace + sem_trace,
+                                    color=color_trace,
+                                    alpha=0.3)
 
 
-                time_max = episodes.time_duration[0] + 1 #assumes prestim 1
+                    time_max = episodes.time_duration[0] + 1 #assumes prestim 1
 
-                ymin, ymax = ax.get_ylim()
-                dy = ymax-ymin
-                ylim = ylim  #[ymin-0.7*dy,ymax+0.7*dy]
-                #ylim_fixed = ylim
+                    ymin, ymax = ax.get_ylim()
+                    dy = ymax-ymin
+                    ylim = ylim  #[ymin-0.7*dy,ymax+0.7*dy]
+                    #ylim_fixed = ylim
 
-                pt.set_plot(ax, 
-                            spines = ['left', 'bottom'],
-                            xticks=np.arange(-1, time_max+1, 1), 
-                            xlabel='Time (s)',
-                            xlim=[episodes.t[0], episodes.t[-1]], 
-                            ylim=ylim)
-            
+                    pt.set_plot(ax, 
+                                spines = ['left', 'bottom'],
+                                xticks=np.arange(-1, time_max+1, 1), 
+                                xlabel='Time (s)',
+                                xlim=[episodes.t[0], episodes.t[-1]], 
+                                ylim=ylim)
                 
-
-                ax.axvspan(0,
-                        episodes.time_duration[0],
-                        color='lightgrey',
-                        alpha=0.5,
-                        zorder=0)
+                    ax.axvspan(0,
+                            episodes.time_duration[0],
+                            color='lightgrey',
+                            alpha=0.5,
+                            zorder=0)
+                
 
         if data.protocols[0]=="ff-gratings-2orientations-8contrasts-15repeats":
             if norm : 
@@ -311,24 +513,41 @@ def plot_dFoF_of_protocol(data_s,
             # Label columns
             for o_idx, orientation in enumerate(key1):
                 AX[1][o_idx].set_xlabel(f"Time (s) \n\n a = {orientation:.1f}°")
+        
+        elif data.protocols[0]=="ffSG-8ori-2ctrst+1sPrePostOpto":
+            #label rows
+            if norm: 
+                AX[0][0].set_ylabel(" C = 0.5 \ndFoF (normalized)")
+                AX[1][0].set_ylabel("OPTO\n C = 0.5 \ndFoF (normalized)")
+                AX[2][0].set_ylabel(" C = 1 \ndFoF (normalized)")
+                AX[3][0].set_ylabel("OPTO\n C = 1 \ndFoF (normalized)")
+            else: 
+                AX[0][0].set_ylabel(" C = 0.5 \ndFoF ")
+                AX[1][0].set_ylabel("OPTO\n C = 0.5 \ndFoF")
+                AX[2][0].set_ylabel(" C = 1 \ndFoF ")
+                AX[3][0].set_ylabel("OPTO\n C = 1 \ndFoF")
+            # Label columns
+            for o_idx, orientation in enumerate(key1):
+                AX[3][o_idx].set_xlabel(f"Time (s) \n\n a = {orientation:.1f}°")
+
 
         # annotate session or ROI info
         if roiIndex is None and subset_rois is None:
             if mode == "single":
-                AX[1][-1].annotate('single session: %s ,   n=%i ROIs' %
+                AX[-1][-1].annotate('single session: %s ,   n=%i ROIs' %
                                 (data_s[0].filename.replace('.nwb',''), data_s[0].nROIs),
                                 (-2, -1), xycoords='axes fraction')
             else:
-                AX[1][-1].annotate('average over %i sessions ,   ' \
+                AX[-1][-1].annotate('average over %i sessions ,   ' \
                 'mean$\\pm$SEM across sessions' % len(data_s),
                                 (-2, -1), xycoords='axes fraction')
         elif roiIndex is not None and subset_rois is None:
             if mode == "single":
-                AX[1][-1].annotate('roi #%i ,   rec: %s' 
+                AX[-1][-1].annotate('roi #%i ,   rec: %s' 
                                    % (1+len(roiIndex), data_s[0].filename.replace('.nwb','')),
                                 (-2, -1), xycoords='axes fraction', fontsize=7)
             else:
-                AX[1][-1].annotate('roi #%i , average over %i sessions' 
+                AX[-1][-1].annotate('roi #%i , average over %i sessions' 
                                    % (1+len(roiIndex), len(data_s)),
                                 (-2, -1), xycoords='axes fraction', fontsize=7)
         else:
@@ -357,13 +576,32 @@ def plot_dFoF_of_protocol(data_s,
                     mean_trace = np.nanmean(traces, axis=0)
                     sem_trace  = np.nanstd(traces, axis=0) / np.sqrt(len(traces))
 
+                print("key1", key1)
                 ax = AX[key1_idx]
-                ax.plot(episodes.t, mean_trace, color='k')
-                time_max = episodes.time_duration[0] + 1 #assumaes prestim 1
+
+                if norm : 
+                        mean_trace_norm = mean_trace - np.nanmean(mean_trace[0:1000])
+                        ax.plot(episodes.t, mean_trace_norm, color=color_trace)
+                        ax.fill_between(episodes.t,
+                                    mean_trace_norm - sem_trace,
+                                    mean_trace_norm + sem_trace,
+                                    color=color_trace,
+                                    alpha=0.3)
+                        AX[0].set_ylabel("dFoF (normalized)")
+                else: 
+                    ax.plot(episodes.t, mean_trace, color=color_trace)
+                    ax.fill_between(episodes.t,
+                                mean_trace - sem_trace,
+                                mean_trace + sem_trace,
+                                color=color_trace,
+                                alpha=0.3)
+                    AX[0].set_ylabel("dFoF")
+                        
+                time_max = episodes.time_duration[0] + 1 #assumes prestim 1
 
                 ymin, ymax = ax.get_ylim()
                 dy = ymax-ymin
-                ylim = [ymin-0.7*dy,ymax+0.7*dy]
+                ylim = ylim #[ymin-0.7*dy,ymax+0.7*dy]
 
                 pt.set_plot(ax, 
                             spines = ['left', 'bottom'],
@@ -372,22 +610,29 @@ def plot_dFoF_of_protocol(data_s,
                             xlim=[episodes.t[0], episodes.t[-1]], 
                             ylim=ylim)
             
-                ax.fill_between(episodes.t,
-                                mean_trace - sem_trace,
-                                mean_trace + sem_trace,
-                                color='k',
-                                alpha=0.3)
-
                 ax.axvspan(0,
                         episodes.time_duration[0],
                         color='lightgrey',
                         alpha=0.5,
                         zorder=0)
 
-        AX[0].set_ylabel("dFoF")
-        for c_idx, contrast in enumerate(key1):
-            AX[c_idx].set_xlabel(f"Time (s) \n c = {contrast:.2f}")
         
+        
+        if data.protocols[0]=="ff-gratings-8orientation-2contrasts-15repeats":
+            for c_idx, contrast in enumerate(key1):
+                AX[c_idx].set_xlabel(f"Time (s) \n c = {contrast:.2f}")
+        if protocol == "static-patch":
+            for c_idx, contrast in enumerate(key1):
+                AX[c_idx].set_xlabel(f"Time (s) \n a = {contrast:.2f}")
+        if protocol == "drifting-gratings":
+            for c_idx, contrast in enumerate(key1):
+                AX[c_idx].set_xlabel(f"Time (s) \n dir = {contrast}")
+        if protocol == "Natural-Images-4-repeats":
+            for c_idx, contrast in enumerate(key1):
+                AX[c_idx].set_xlabel(f"Time (s) \n ID = {contrast}")
+
+
+            
         # annotate session or ROI info
         if roiIndex is None and subset_rois is None:
             if mode == "single":

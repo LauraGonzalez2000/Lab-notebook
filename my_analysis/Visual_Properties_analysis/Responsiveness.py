@@ -709,7 +709,7 @@ for idx, filename in enumerate(SESSIONS['files']):
 
 #%%
 ################ PIE CHARTS RESPONSIVENESS PER PROTOCOL ##########################################
-#protocols = ["static-patch", "drifting-gratings", "Natural-Images-4-repeats"]
+protocols = ["static-patch", "drifting-gratings", "Natural-Images-4-repeats"]
 #protocols = ["static-patch", "Natural-Images-4-repeats", "looming-stim"]
 #protocols = ["static-patch"]
 #protocols = ["drifting-gratings"]
@@ -720,7 +720,7 @@ for idx, filename in enumerate(SESSIONS['files']):
 #             'Natural-Images-4-repeats', 
 #             'moving-dots', 
 #             'random-dots']
-protocols = ['looming-stim']
+#protocols = ['looming-stim']
 
 
 #protocols = ['static-patch', 
@@ -735,7 +735,8 @@ fig_responsiveness, _ = plot_responsiveness_per_protocol(data_s,
                                                          protocols=protocols, 
                                                          by_average='ROI', 
                                                          behavior_split=True, 
-                                                         subprotocol_split=False)
+                                                         subprotocol_split=True)
+fig_responsiveness.savefig(f'piecharts.png', format='png', dpi=600, transparent=True)
 #fig_responsiveness.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/responsiveness.svg'))
 #%%
 ############################################################################################################

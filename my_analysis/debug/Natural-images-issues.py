@@ -6,7 +6,7 @@
 import os, sys
 import numpy as np
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 import physion.utils.plot_tools as pt
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.analysis.episodes.build import EpisodeData
@@ -15,7 +15,8 @@ pt.set_style('manuscript')
 
 #%%
 #LOAD DATA
-datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
+#datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','2NatIm8contrasts', 'NDNF-Cre','NWBs')
 #datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
@@ -61,7 +62,7 @@ ax.imshow(image, cmap=pt.plt.cm.binary_r, vmin=0, vmax=1)
 
 #%%
 ############################ ACCESS image from data.visual_stim.get_image(index) ########################################
-index_episode = 10  #1 for natural images
+index_episode = 1  #1 for natural images
 image = data.visual_stim.get_image(index=index_episode)
 image =  np.rot90(image, k=1)
 fig, ax = pt.figure()

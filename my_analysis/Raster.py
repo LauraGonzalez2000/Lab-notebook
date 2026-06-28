@@ -96,8 +96,9 @@ def plot_evoked_pattern(EP_s,
     ####### initialize figure
     fig, axR = pt.figure(axes=(n_cond,1),
                          ax_scale=(2, 15),
-                         right=4,
-                         left=0.3,
+                         right=4.5,
+                         left=0.8,
+                         wspace=2,
                          top=(4.5 if with_stim_inset else 1))
     axR = np.atleast_1d(axR)
     
@@ -269,7 +270,7 @@ def plot_evoked_pattern(EP_s,
                     xticks=np.arange(-1, time_max+1, 1), 
                     xlabel='Time (s)',
                     xlim=[ep_s[0].t[0], ep_s[0].t[-1]], 
-                    fontsize=15)
+                    fontsize=20)
        
         pt.bar_legend(axR[column], 
                       colorbar_inset=dict(rect=[1.1,.1,.04,.8], facecolor=None),
@@ -282,7 +283,7 @@ def plot_evoked_pattern(EP_s,
                       ticks_labels=None,
                       no_ticks=False,
                       orientation='vertical', 
-                      fontsize=15)
+                      fontsize=20)
         
         trans = blended_transform_factory(axR[column].transData, axR[column].transAxes)
 
@@ -296,8 +297,8 @@ def plot_evoked_pattern(EP_s,
 
         
         axR[column].annotate(f"{len(combined_zerobaseline_ordered)}", 
-                             xy=(-0.25,0), 
-                             fontsize=15,
+                             xy=(-0.3,0), 
+                             fontsize=20,
                              xycoords="axes fraction",
                              clip_on=False)
     return fig
@@ -322,11 +323,11 @@ for index in range(len(SESSIONS['files'])):
     data_s_yann.append(data)
 
 #%%
-#protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
+protocols = ["static-patch",  "drifting-gratings", "Natural-Images-4-repeats"]
 #protocols = ["drifting-gratings", "Natural-Images-4-repeats"]
 #protocols = ["Natural-Images-4-repeats"]
-protocols = ["drifting-gratings"]
-protocols = ["looming-stim"]
+#protocols = ["drifting-gratings"]
+#protocols = ["looming-stim"]
 
 ep_s_ = []
 for protocol in protocols: 
@@ -349,13 +350,16 @@ for p, protocol in enumerate(protocols):
     #                    with_stim_inset=True, 
     #                    behavior_split=False, 
     #                    clustering = 'amplitude')
+    #fig.savefig(f'raster-{protocol}.png', format='png', dpi=600, transparent=True)
+    
     
     #fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/raster_{p}.svg'))
-    plot_evoked_pattern(EP_s=ep_s, 
+    fig = plot_evoked_pattern(EP_s=ep_s, 
                         quantity='dFoF', 
-                        with_stim_inset=False, 
+                        with_stim_inset=True, 
                         behavior_split=True, 
                         clustering = 'amplitude')
+    fig.savefig(f'raster_behavior-{protocol}.png', format='png', dpi=600, transparent=True)
 #######################################################################################################################
 #######################################################################################################################
 

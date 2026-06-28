@@ -404,7 +404,113 @@ def plot_barplot2_per_protocol(data_s, AX,idx,  p, subplots_n):
     
     return 0
 
-def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n, subset_rois=None):
+def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n, subset_rois=None, stat_test_props={}, color_bar='k'):
+    """
+    Takes as arguments : 
+        data_s -> 
+        AX -> 
+        idx ->
+        p -> 
+        subplots_n -> 
+        subset_rois -> 
+        stat_test_props -> 
+
+    Method:
+        calculates the summary data per file. 
+        The values are stored in mean_vals (size #num_values_per_file) 
+        and concatenated in mean_vals_s (size #files x #num_values_per_file)
+        The mean is calculated (average all files) (size #num_values_per_file)
+        The sem is calculated (similarity between files) (size #num_values_per_file)
+
+    Output:
+    The barplot is plotted
+
+    """
+    mean_vals_s = []  # store per-session mean responses
+
+    for data_i, data in enumerate(data_s):
+        ep = EpisodeData(data, protocol_name=p[0], quantities=['dFoF'])
+        t0 = max([0, ep.time_duration[0] - 1.0])
+
+        if stat_test_props=={}:
+            stat_test_props = dict(
+                interval_pre=[-1.0, 0],
+                interval_post=[t0, t0 + 1.0],
+                test='ttest',
+                sign='both')
+        
+        if subset_rois == None: 
+            summary_data = pre_post_statistics(ep,
+                                            episode_cond = ep.find_episode_cond(),
+                                            response_args = {},
+                                            response_significance_threshold=0.05,
+                                            stat_test_props=stat_test_props,
+                                            repetition_keys=['repeat'])
+        
+            # Extract ROI mean values
+            #mean_vals = np.nanmean(vals_subset, axis=0) #easier no?
+            mean_vals = [float(np.ravel(v)[0]) if np.size(v) > 0 else np.nan for v in summary_data['value']]
+
+        else :
+            summary_data = pre_post_statistics(ep,
+                                           episode_cond = ep.find_episode_cond(),
+                                           response_args = {'quantity': "dFoF"},
+                                           response_significance_threshold=0.05,
+                                           stat_test_props=stat_test_props,
+                                           repetition_keys=['repeat'], 
+                                           loop_over_cells=True) # Loop over all cells!!
+            
+            subset_rois_i = subset_rois[data_i]
+            vals_subset = summary_data['value'][subset_rois_i]
+            mean_vals = np.nanmean(vals_subset, axis=0)
+            #mean_vals = [float(np.ravel(v)[0]) if np.size(v) > 0 else np.nan for v in summary_data['value']]
+
+        # Pad/truncate to subplots_n elements - necessary??
+        target_len = subplots_n
+        mean_vals = (list(mean_vals) + [np.nan] * target_len)[:target_len]
+
+        mean_vals_s.append(mean_vals)
+      
+    ep0 = EpisodeData(data_s[0], protocol_name=p[0], quantities=['dFoF'])
+
+    varied_keys = list(ep0.varied_parameters.keys())
+    angles = ep0.varied_parameters[varied_keys[0]]
+    contrasts = ep0.varied_parameters[varied_keys[1]]
+
+    if p[0] == 'ff-gratings-8orientation-2contrasts-15repeats':
+        param_values = [f"a={a:.1f}° , C={c:.1f}" for c in contrasts for a in angles]
+    elif p[0] == 'ff-gratings-2orientations-8contrasts-15repeats':
+        param_values = [f"a={a:.1f}° , C={c:.2f}" for a in angles for c in contrasts]
+    elif p[0]== '2NaturalImages-8contrasts-15repeats':
+        param_values = [f"Img={a:.1f} , C={c:.2f}" for a in angles for c in contrasts]
+    else: 
+        contrasts = ep0.varied_parameters[varied_keys[0]]
+        param_values = [f"C={c:.2f}" for c in contrasts]
+
+    # Compute session-aggregated mean and SEM
+    values = np.nanmean(mean_vals_s, axis=0)
+    yerr = stats.sem(mean_vals_s, axis=0, nan_policy='omit')
+    x = np.arange(len(values))
+
+    # Plot
+    AX.bar(x, values, 
+           yerr=yerr,
+           alpha=0.8, 
+           capsize=0,
+           error_kw=dict(linewidth=0.6), 
+           color= color_bar)
+    #pt.set_plot(ax = AX, 
+    #            )
+    AX.set_xticks(x)
+    AX.set_xticklabels(param_values,rotation=90, ha="center")
+    AX.axhline(0, color='black', linewidth=0.8)
+    
+    if idx==0:
+        AX.set_ylabel('variation \ndFoF')
+    
+    return 0
+"""
+def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n, subset_rois=None, stat_test_props={}):
     mean_vals_s = []  # store per-session mean responses
 
     for data in data_s:
@@ -412,11 +518,15 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n, subset_rois=None)
         ep = EpisodeData(data, protocol_name=p[0], quantities=['dFoF'])
 
         t0 = max([0, ep.time_duration[0] - 1.5])
-        stat_test_props = dict(
-            interval_pre=[-1.5, 0],
-            interval_post=[t0, t0 + 1.5],
-            test='ttest',
-            sign='both')
+
+        print("interval_post : ", t0,", ", t0 + 1.5)
+
+        if stat_test_props=={}:
+            stat_test_props = dict(
+                interval_pre=[-1.5, 0],
+                interval_post=[t0, t0 + 1.5],
+                test='ttest',
+                sign='both')
 
         summary_data = pre_post_statistics(ep,
                                            episode_cond = ep.find_episode_cond(),
@@ -434,33 +544,7 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n, subset_rois=None)
         mean_vals = (mean_vals + [np.nan] * target_len)[:target_len]
 
         mean_vals_s.append(mean_vals)
-        """
-        if p == 'ff-gratings-8orientation-2contrasts-15repeats':
-            #reorder mean_vals
-            mean_vals_ = np.zeros(16)
-            mean_vals_[0] = mean_vals[0]
-            mean_vals_[1] = mean_vals[2]
-            mean_vals_[2] = mean_vals[4]
-            mean_vals_[3] = mean_vals[6]
-            mean_vals_[4] = mean_vals[8]
-            mean_vals_[5] = mean_vals[10]
-            mean_vals_[6] = mean_vals[12]
-            mean_vals_[7] = mean_vals[14]
-
-            mean_vals_[8] = mean_vals[1]
-            mean_vals_[9] = mean_vals[3]
-            mean_vals_[10] = mean_vals[5]
-            mean_vals_[11] = mean_vals[7]
-            mean_vals_[12] = mean_vals[9]
-            mean_vals_[13] = mean_vals[11]
-            mean_vals_[14] = mean_vals[13]
-            mean_vals_[15] = mean_vals[15]
-
-            mean_vals = mean_vals_
-
-        mean_vals_s.append(mean_vals)
-        """
-
+      
     ep0 = EpisodeData(data_s[0], protocol_name=p[0], quantities=['dFoF'])
 
     varied_keys = list(ep0.varied_parameters.keys())
@@ -503,20 +587,36 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n, subset_rois=None)
         AX.set_ylabel('variation \ndFoF')
     
     return 0
-
-def generate_figures_GROUP(data_s, subplots_n, test="angle", means='ROI', protocols = [], ylim= [-0.2,1.0], subset_rois=None):
+"""
+def generate_figures_GROUP(data_s, 
+                           subplots_n, 
+                           test="angle", 
+                           means='ROI', 
+                           protocols = [], 
+                           ylim= [-0.2,1.0], 
+                           subset_rois=None, 
+                           stat_test_props={}, 
+                           color_trace='k'):
     start_time = time.time()  
 
     if protocols == []:
         protocols = [p for p in data_s[0].protocols 
                         if (p != 'grey-10min') and (p != 'black-2min') and (p != 'quick-spatial-mapping')]
 
-    fig_traces, _     = plot_dFoF_of_protocol(data_s=data_s, protocol=protocols[0], ylim=ylim, subset_rois=subset_rois)
+    
+    fig_traces, _     = plot_dFoF_of_protocol(data_s=data_s, protocol=protocols[0], ylim=ylim, subset_rois=subset_rois, color_trace=color_trace)
     elapsed = time.time() - start_time
     print(f"Fig 1 ok: {elapsed:.2f} seconds")
 
-    fig_vdFoF, AX2  = pt.figure(axes = (1,1), ax_scale=(3, 1))
-    plot_barplot2_of_protocol(data_s, AX2, 0, protocols, subplots_n, subset_rois = subset_rois)
+    fig_vdFoF, AX2  = pt.figure(axes = (1,1), ax_scale=(2, 1))
+    plot_barplot2_of_protocol(data_s, 
+                              AX2, 
+                              0, 
+                              protocols, 
+                              subplots_n, 
+                              subset_rois = subset_rois,
+                              stat_test_props=stat_test_props, 
+                              color_bar=color_trace)
 
     fig_resp_vs_param, AX3 = pt.figure(axes = (1,1),figsize=(2,2), ax_scale=(2, 5))
     fig_resp_vs_param2, AX4 = pt.figure(axes = (1,1),figsize=(2,2), ax_scale=(2, 5))
@@ -524,18 +624,18 @@ def generate_figures_GROUP(data_s, subplots_n, test="angle", means='ROI', protoc
 
     
     if protocols[0] == "2NaturalImages-8contrasts-15repeats":
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat", "Image-ID"], means='ROI', param=1.0, param_type="Image-ID", subset_rois = subset_rois)
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat", "Image-ID"], means='ROI', param=2.0, param_type="Image-ID", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat", "Image-ID"], means='ROI', param=2.0, param_type="Image-ID", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat", "Image-ID"], means='ROI', param=1.0, param_type="Image-ID", subset_rois = subset_rois)
         plot_resp_vs_param(data_s, p=protocols[0], AX=AX5, test = test, repetition_keys = ["repeat", "Image-ID"], means='ROI', param=None, param_type="Image-ID", subset_rois = subset_rois)
 
     elif protocols[0] == 'ff-gratings-2orientations-8contrasts-15repeats':
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat", "angle"], means=means, param=0.0, param_type="angle", subset_rois = subset_rois)
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat", "angle"], means=means, param=90.0, param_type="angle", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat", "angle"], means=means, param=90.0, param_type="angle", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat", "angle"], means=means, param=0.0, param_type="angle", subset_rois = subset_rois)
         plot_resp_vs_param(data_s, p=protocols[0], AX=AX5, test = test, repetition_keys = ["repeat", "angle"], means=means, param=None, param_type="angle", subset_rois = subset_rois)
     
     elif protocols[0] == 'ff-gratings-8orientation-2contrasts-15repeats':
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat"], means=means, param=0.5, param_type="contrast", subset_rois = subset_rois)
-        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat"], means=means, param=1.0, param_type="contrast", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat"], means=means, param=1.0, param_type="contrast", subset_rois = subset_rois)
+        plot_resp_vs_param(data_s, p=protocols[0], AX=AX4, test = test, repetition_keys = ["repeat"], means=means, param=0.5, param_type="contrast", subset_rois = subset_rois)
         plot_resp_vs_param(data_s, p=protocols[0], AX=AX5, test = test, repetition_keys = ["repeat", "contrast"], means=means, param=None, param_type="contrast", subset_rois = subset_rois)
 
     elif protocols[0] == 'drifting-grating':

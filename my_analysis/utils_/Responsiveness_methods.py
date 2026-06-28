@@ -18,29 +18,29 @@ import matplotlib as plt
 
 # COMPUTES RESPONSIVENESS
 
-def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.5, repetition_keys = ['repeat'], filtering_cond=None, param=None, param_type=None):
+def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.0, repetition_keys = ['repeat'], filtering_cond=None, param=None, param_type=None):
 
     '''
     Calculates the responsiveness of each ROI in an episode, calculating for each combination of parameters given
     
-    takes as arguments : 
-        ep -> episode
+    Takes as arguments : 
+        ep -> episode (only one)
         nROIs -> number of ROIs
 
-    optional arguments : 
-        alpha -> response significance threshold, usually equal to 0.05
-        t_window -> time in s defining the time window to calculate responsiveness 
-                    (ex: last 1.5 s of the visual stim vs 1.5 s before stim starts) 
-        repetition_keys -> merges episodes by these keys. "repeat" will group together the repeats of the same stim (default)
-                                                          "angle"  will group together the different angles etc.
-    
-    returns : 
+        optional arguments : 
+            alpha -> response significance threshold, usually equal to 0.05
+            t_window -> time in s defining the time window to calculate responsiveness 
+                        (ex: last 1.5 s of the visual stim vs 1.5 s before stim starts) 
+            repetition_keys -> merges episodes by these keys. "repeat" will group together the repeats of the same stim (default)
+                                                            "angle"  will group together the different angles etc.
+        
+    Returns : 
         3 lists of booleans (each of #nROIs x #conditions)
             Responsive ROIs (True if resposive, False if not)
             Positively responsive ROIs (True if positively responsive, False if not)
             Negatively responsive ROIs (True if negatively responsive, False if not)
     '''
-    print("hey")
+
     session_summary = {'significant':[], 'value':[]}
 
     for roi_n in range(nROIs):
@@ -74,7 +74,6 @@ def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.5, repetition_keys 
     resp_cond = np.array(session_summary['significant'])
     pos_cond = resp_cond & np.array([session_summary_value >0 for session_summary_value in session_summary['value'] ])
     neg_cond = resp_cond & np.array([session_summary_value <0 for session_summary_value in session_summary['value'] ])
-    print("hey2")
     return resp_cond, pos_cond, neg_cond
 
 def compute_responsiveness(ep, nROIs, alpha=0.05, window=1.5):
@@ -664,8 +663,9 @@ def get_vals_resp_vs_param(data_s, p, repetition_keys = ['repeat'], means='ROIs'
             nROIs = data_s[file_i].nROIs
 
             print("kk", subset_rois)
-
-            subset_rois_i = subset_rois[file_i]
+            if subset_rois != None: 
+                subset_rois_i = subset_rois[file_i]
+            
 
             final_resp_ = []
             final_pos_ = []
@@ -691,6 +691,7 @@ def get_vals_resp_vs_param(data_s, p, repetition_keys = ['repeat'], means='ROIs'
                     count_ns = np.sum([ns_cond_s[file_i][roi_i][contrast_i] for roi_i in range(nROIs)])
                     final_ns = (count_ns/nROIs)*100
                     final_ns_.append(final_ns)
+                
                 else:
                     count_resp = np.sum([resp_cond_s[file_i][roi_i][contrast_i] for roi_i in subset_rois_i])
                     final_resp = (count_resp/nROIs)*100
@@ -769,17 +770,21 @@ def plot_resp_vs_param(data_s,
        
     pt.set_plot(ax = AX, 
                 ylabel='Responsiveness (%)', 
-                yticks=np.arange(0, 105, 10),
+                yticks=np.arange(0, 101, 10), #101, 10
                 xticks = x,
                 xlabel=test, 
                 xticks_labels=[f"{xi:.2f}" for xi in x],
                 xticks_rotation=90,
                 fontsize = 15,
-                ylim=[0,100])
+                ylim=[0,101]) #0, 101
     
     return 0
 
-def plot_responsiveness_per_protocol(data_s,  protocols=[''], type='means', behavior_split=False, colors = ["#b40426", "#3b4cc0", "#bdbbbb"]):
+def plot_responsiveness_per_protocol(data_s,  
+                                     protocols=[''], 
+                                     type='means', 
+                                     behavior_split=False, 
+                                     colors = ["#b40426", "#3b4cc0", "#bdbbbb"]):
     
     '''
     Plot pie charts responsiveness (positive, negative, non-significative) for each protocol (possibility to split by subprotocol and or by behavioral state)
