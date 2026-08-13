@@ -14,11 +14,13 @@ def build_movie(json_protocol, name='temp', rm=True):
     with open('%s.json' % name, 'w') as f:
         f.write(json_protocol)
         
-    cmd = 'python -m physion.visual_stim.build ../../%s.json' % name
-
+    cmd = 'python -m physion.visual_stim.build ..\\..\\%s.json' % name
+    
     p = subprocess.Popen(cmd,
-            cwd = os.path.join(pathlib.Path(__file__).resolve(), 'physion', 'src'),
+            cwd = os.path.join('.', 'physion', 'src'),
             shell=True)
+    
+    p.wait() # need to wait for completion
 
     # clean up generated json afterwards
     if rm:
@@ -115,7 +117,7 @@ if 0:
 if 1:
   build_movie(MultiProtocol(Screen=Screen, Nrepeat=4),
               name='vision-survey-short+1sPrePostOpto',
-              rm=True)
+              rm=False)
 
 if 0:
     for x, y in itertools.product(
