@@ -1,4 +1,4 @@
-import os, time
+import os, subprocess, pathlib
 import itertools
 
 Screen="Dell-2020"
@@ -10,11 +10,19 @@ x=45.
 y=20.
 
 def build_movie(json_protocol, name='temp', rm=True):
-  with open('%s.json' % name, 'w') as f:
-    f.write(json_protocol)
-  os.system('cd physion/src; python -m physion.visual_stim.build ../../%s.json; cd ../..' % name)
-  if rm:
-    os.remove('%s.json' % name)
+
+    with open('%s.json' % name, 'w') as f:
+        f.write(json_protocol)
+        
+    cmd = 'python -m physion.visual_stim.build ../../%s.json' % name
+
+    p = subprocess.Popen(cmd,
+            cwd = os.path.join(pathlib.Path(__file__).resolve(), 'physion', 'src'),
+            shell=True)
+
+    # clean up generated json afterwards
+    if rm:
+        os.remove('%s.json' % name)
 
 
 ###########################################
