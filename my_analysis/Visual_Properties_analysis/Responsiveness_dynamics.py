@@ -246,13 +246,18 @@ def plot_heatmap(stim_similarity, separators=True):
                 yticks_labels=df.columns,
                 xticks=range(len(df.columns)), 
                 xticks_labels=df.columns,
-                xticks_rotation=90,
+                xticks_rotation=0,
                 fontsize=5)
     if separators: 
         for i in [-0.5, 1.5, 5.5, 7.5, 8.5, 13.5, 17.5]:
             print(i)
             AX.axvline(x=i, color='black', linewidth=0.5)
             AX.axhline(y=i, color='black', linewidth=0.5)
+
+    fig.savefig(f'encoding-heatmap_act.png', format='png', dpi=600, transparent=True,
+                bbox_inches="tight")
+
+    return fig, AX
     
 cmap_graywarm = mcolors.LinearSegmentedColormap.from_list("graywarm",
                                                           ["#3b4cc0",  # blue (negative)
@@ -290,16 +295,16 @@ if __name__ == "__main__":
         data.build_pupil_diameter()
         data_s.append(data)
     #%%
-    protocols = ["static-patch", 
-                "drifting-gratings", 
-                "Natural-Images-4-repeats"]
+    #protocols = ["static-patch", 
+    #            "drifting-gratings", 
+    #            "Natural-Images-4-repeats"]
 
-    #protocols = ["moving-dots",
-    #             "random-dots",
-    #             "static-patch",
-    #             "looming-stim", 
-    #             "Natural-Images-4-repeats", 
-    #             "drifting-gratings"]
+    protocols = ["moving-dots",
+                 "random-dots",
+                 "static-patch",
+                 "looming-stim", 
+                 "Natural-Images-4-repeats", 
+                 "drifting-gratings"]
 
 
     #####################################################################################################
@@ -473,8 +478,8 @@ if __name__ == "__main__":
     df = pd.concat(expanded_cols, axis=1)
 
     # ROI response vs STIM 
-    fig, AX = pt.figure(figsize=(5,10), 
-                        ax_scale=(3, 10)) 
+    fig, AX = pt.figure(figsize=(5,5), 
+                        ax_scale=(2.3, 10)) 
             
     cmap_graywarm_nl = nonlinear_cmap(cmap_graywarm, 
                                       vmin=vmin, 
@@ -510,9 +515,14 @@ if __name__ == "__main__":
                 yticks=[0, len(df.index)],
                 ylabel='ROI',
                 xticks=range(len(df.columns)), 
-                xticks_labels=df.columns,
-                xticks_rotation=90,
+                xticks_labels=["1", "2", "3", "4", "5", "6", "7", "8", "9", 
+                               "10", "11", "12", "13", "14", "15", "16", "17", "18"],#df.columns,
+                xticks_rotation=0,
                 fontsize=8)
+    
+    #fig.savefig(f'encoding-rasterFOV.png', format='png', dpi=600, transparent=True,
+    #            bbox_inches="tight")
+    
 
     #%%
     ####################################################################
@@ -530,6 +540,7 @@ if __name__ == "__main__":
         expanded_cols.append(expanded)
 
     df = pd.concat(expanded_cols, axis=1)
+    df.columns = np.arange(1, len(df.columns) + 1)
 
     stim_similarity = np.ones((len(df.columns), len(df.columns)))*np.nan
 
@@ -558,6 +569,7 @@ if __name__ == "__main__":
         expanded_cols.append(expanded)
 
     df_act = pd.concat(expanded_cols, axis=1)
+    df_act.columns = np.arange(1, len(df.columns) + 1)
 
     expanded_cols = []
 

@@ -234,12 +234,12 @@ def plot_trace_vdFoF(traces_act, traces_rest, aligned=False):
                     color="brown", alpha=0.2)
 
     # Formatting
+    ymin, ymax = [0,3]
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("dFoF")
     ax.set_xticks(np.arange(0, episodes.t.max() + 1, 1))
-
-   
-    ymin, ymax = [-1,2]
+    ax.set_yticks(np.arange(ymin, ymax + 1, 0.5))
+    ax.set_ylim(ymin, ymax)
     ax.fill_between(np.array([0, episodes.time_duration[0]]), y1=ymax, y2=ymin,
                     color="grey", alpha=0.25)
     
@@ -250,6 +250,43 @@ def plot_trace_vdFoF(traces_act, traces_rest, aligned=False):
     #                color="orange", alpha=0.1)
     
     ax.axhline(y=0, linewidth=0.5, linestyle='--')
+
+    #fig.savefig(f'behavior_traces_neg_ni.png', format='png', dpi=600, transparent=True)
+
+    return fig, ax
+
+def plot_trace_vdFoF2(traces, aligned=False):
+
+    fig, ax = plt.subplots(1,1, figsize=(1.5, 3))
+
+    my_mean = np.nanmean(traces, axis=(0))
+    my_sem  = np.nanstd(traces, axis=(0)) / np.sqrt(np.sum(~np.isnan(traces), axis=(0)))
+
+    if aligned: 
+        ini_val1 = 600 #fix
+        ini_val2 = 1000 #fix
+        bsl = my_mean[ini_val1 : ini_val2].mean(axis=0)
+        print(bsl)
+        my_mean = my_mean - bsl
+
+    # Plot traces +- SEM
+    ax.plot(episodes.t, my_mean, color="grey", label="Any state")
+    ax.fill_between(episodes.t, my_mean - my_sem, my_mean + my_sem,
+                    color="darkgrey", alpha=0.2)
+
+    # Formatting
+    ymin, ymax = [0,3]
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("dFoF")
+    ax.set_xticks(np.arange(0, episodes.t.max() + 1, 1))
+    ax.set_yticks(np.arange(ymin, ymax + 1, 0.5))
+    ax.set_ylim(ymin, ymax)
+    ax.fill_between(np.array([0, episodes.time_duration[0]]), y1=ymax, y2=ymin,
+                    color="grey", alpha=0.25)
+
+    ax.axhline(y=0, linewidth=0.5, linestyle='--')
+
+    #fig.savefig(f'behavior_traces_neg_ni.png', format='png', dpi=600, transparent=True)
 
     return fig, ax
 
@@ -374,7 +411,6 @@ datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-p
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
-
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
                  'method_for_F0' : 'sliding_percentile', # either 'minimum', 'percentile', 'sliding_minimum', or 'sliding_percentile'
                  'sliding_window' : 300. , # seconds (used only if METHOD= 'sliding_minimum' | 'sliding_percentile')
@@ -400,7 +436,7 @@ data.build_dFoF(**dFoF_options, verbose=False)
 data.build_running_speed()
 
 episodes = EpisodeData(data, 
-                       quantities=['dFoF', 'Running-Speed'],
+                       quantities=['dFoF', 'running_speed'],
                        protocol_name=protocol,
                        prestim_duration=pre_stim, 
                        verbose=False)
@@ -431,16 +467,23 @@ plot_trace_vdFoF(trace_act, trace_rest, aligned=True)
 ################################# TEST ALL FILES (ROI combined) ##########################
 ##########################################################################################
 
-#%% not dividing by behavior
-protocol = "static-patch"
+#%% ################################################################
+################# BOTH STATES COMBINED #############################
+####################################################################
+
+#protocol = "static-patch"
 #protocol = "drifting-gratings"
 #protocol = "Natural-Images-4-repeats"
-#protocol = 'moving-dots' 
+protocol = 'moving-dots' 
 #protocol = 'random-dots'
 #protocol = "looming-stim"
 
-traces_ = []
 diffs_ = []
+traces_ = []
+mean_trials_ = []
+traces_resp_s = []
+traces_pos_s = []
+traces_neg_s = []
 for i in range(len(SESSIONS['files'])):
     filename = SESSIONS['files'][i]
     filename_ = os.path.basename(filename)
@@ -450,16 +493,64 @@ for i in range(len(SESSIONS['files'])):
     data.build_running_speed()
 
     episodes = EpisodeData(data, 
-                        quantities=['dFoF', 'Running-Speed'],
+                        quantities=['dFoF', 'running_speed'],
                         protocol_name=protocol,
                         prestim_duration=pre_stim, 
                         verbose=False)
-    print(data.nROIs)
-
+    
+    episodes_ = EpisodeData(data, 
+                        quantities=['dFoF'],
+                        protocol_name=protocol,
+                        prestim_duration=pre_stim, 
+                        verbose=False)
+    
+    traces = episodes.dFoF
     diffs = get_variation_dFoF(episodes, cond=None, pre_stim=pre_stim)
+
     diffs_.append(diffs)
+    traces_.append(traces)
+    mean_trials = np.mean(traces, axis=0)
+    mean_trials_.append(mean_trials)
+
+    resp_cond, pos_cond, neg_cond = calc_responsiveness(episodes_, data.nROIs)
+
+    traces_resp  = np.array([traces[i][resp_cond] for i in range(len(traces))]) 
+    traces_pos  = np.array([traces[i][pos_cond] for i in range(len(traces))]) 
+    traces_neg  = np.array([traces[i][neg_cond] for i in range(len(traces))]) 
+
+    traces_resp_s.append(traces_resp)
+    traces_pos_s.append(traces_pos)
+    traces_neg_s.append(traces_neg)
 
 flattened = [row for arr in diffs_ for row in arr]
+flattened_traces = [row for arr in mean_trials_ for row in arr]
+
+#%%
+# calculate baseline
+print(len(traces_pos))
+#%%
+# ALL CELLS
+plot_trace_vdFoF2(flattened_traces)
+#plot_trace_vdFoF2(flattened_traces, aligned=True)
+
+# POSITIVE CELLS
+temp_pos = [np.nanmean(traces_pos_s[i], axis=0 ) for i in range(len(traces_pos_s))]
+temp_pos = [arr for arr in temp_pos if not np.isnan(arr).any()]
+flattened_pos = [row for arr in temp_pos for row in arr]
+
+fig_trace1, _ = plot_trace_vdFoF2(flattened_pos)
+#fig_trace2, _ = plot_trace_vdFoF2(flattened_pos, aligned=True)
+
+#NEGATIVE CELLS
+temp_neg = [np.nanmean(traces_neg_s[i], axis=0 ) for i in range(len(traces_neg_s))]
+temp_neg = [arr for arr in temp_neg if not np.isnan(arr).any()]
+flattened_neg = [row for arr in temp_neg for row in arr]
+
+fig_trace1, _ = plot_trace_vdFoF2(flattened_neg)
+#fig_trace2, _ = plot_trace_vdFoF2(flattened_neg, aligned=True)
+
+
+#%%
 ############################
 cols = 2  # Number of columns per row
 rows = 1  # Compute the required number of rows
@@ -519,9 +610,9 @@ AX[1].set_ylim([-4,10])
 #protocol = "static-patch"
 #protocol = "drifting-gratings" #with or without s!!!
 #protocol = "Natural-Images-4-repeats"
-#protocol = 'moving-dots' 
+protocol = 'moving-dots' 
 #protocol = 'random-dots'
-protocol = "looming-stim"
+#protocol = "looming-stim"
 
 traces_act_s, traces_rest_s, diffs_act_s, diffs_rest_s = [], [], [], []
 traces_act_resp_s, traces_rest_resp_s, traces_act_pos_s, traces_rest_pos_s, traces_act_neg_s, traces_rest_neg_s = [], [], [], [], [], []
@@ -549,7 +640,7 @@ for index in range(len(SESSIONS['files'])):
                         verbose=False)
 
     episodes = EpisodeData(data, 
-                        quantities=['dFoF', 'Running-Speed'],
+                        quantities=['dFoF', 'running_speed'],
                         protocol_name=protocol,
                         prestim_duration=pre_stim, 
                         verbose=False)
@@ -618,12 +709,13 @@ flattened_rest = [row for arr in temp_rest for row in arr]
 diffs_act_all = np.concatenate(diffs_act_s) 
 diffs_rest_all = np.concatenate(diffs_rest_s)  
 
-#why are there nans? =
+#why are there nans? 
 diffs_act_all_ = [x for x in diffs_act_all if not np.isnan(x)]
 diffs_rest_all_ = [x for x in diffs_rest_all if not np.isnan(x)]
 
 plot_trace_vdFoF(flattened_act, flattened_rest)
 plot_trace_vdFoF(flattened_act, flattened_rest, aligned=True)
+
 plot_dFoF(diffs_act_all, diffs_rest_all, protocol=protocol, filename="ALL recordings", metric="roi")
 
 boxplot_dict = {"title": "Amplitude peak Act vs Rest",
@@ -812,6 +904,8 @@ fig, ax0 = pt.figure(axes=(1, 1), ax_scale=(3, 10), wspace=1.5)
 hb = ax0.hexbin(x, y, gridsize=50, bins = 'log', cmap='viridis')
 ax0.set(xlim=xlim, ylim=ylim)
 cb = fig.colorbar(hb, ax=ax0, label='counts')
+cb.ax.tick_params(labelsize=20)   # Tick labels
+cb.set_label('Counts', fontsize=20)  # Colorbar label
 
 # Fit line
 a, b = np.polyfit(rest_resp, act_resp, 1)
@@ -829,22 +923,23 @@ print(f"y = {a:.3f}x + {b:.3f}")
 r = np.corrcoef(rest_resp, act_resp)[0,1]
 r2 = r**2
 
-ax0.text(0.15, 0.95,
+ax0.text(0.15, 0.98,
         f"y = {a:.1f}x + {b:.1f}   $R^2$ = {r2:.3f}",
         transform=ax0.transAxes,
         verticalalignment='top', 
-        fontsize=12)
+        fontsize=20)
 
 pt.set_plot(ax=ax0, 
             #title= f"{protocol}, n={len(boxplot_dict["data"][0])}",
             spines = ['bottom', 'left'],
             ylabel='Amplitude peak active state',
             xlabel='Amplitude peak resting state',
-            fontsize=15)
+            fontsize=20)
 
 #pt.bar_legend(ax0, bar_legend_args={"fontsize":10})
 
-ax0.axvline(x=0, color='black', linewidth=0.5)
-ax0.axhline(y=0, color='black', linewidth=0.5)
+ax0.axvline(x=0, color='black', linewidth=0.7)
+ax0.axhline(y=0, color='black', linewidth=0.7)
 
-fig.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/hexbin_natural.svg'))
+fig.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/hexbin_staticpatch.svg'))
+fig.savefig(f'hexbin_natim.png', format='png', dpi=600, transparent=True)

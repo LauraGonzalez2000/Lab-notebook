@@ -32,6 +32,7 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
                 'percentile': 10.,
                 'neuropil_correction_factor': 0.8}
 data_s_ori = []
+nROIS = 0
 for idx, filename in enumerate(SESSIONS['files']):
     data = Data(filename, verbose=False)
     data.build_dFoF(**dFoF_options)
@@ -40,7 +41,10 @@ for idx, filename in enumerate(SESSIONS['files']):
     data.build_pupil_diameter()
     data_s_ori.append(data)
     print(idx, data.protocols)
+    nROIS += data.nROIs
 
+#%%
+nROIS
 #%% [markdown]
 ## All individual files
 #%%
@@ -49,6 +53,6 @@ for idx, filename in enumerate(SESSIONS['files']):
 #%% [mardown]
 ## GROUPED ANALYSIS
 #%%
-fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8 = generate_figures_GROUP(data_s_ori, subplots_n=16, test=test)
+fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8 = generate_figures_GROUP(data_s_ori, subplots_n=16, test=test, ylim=[-0.3,0.2])
 #%%
 create_group_PDF(fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, 'NDNF', test=test)

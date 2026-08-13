@@ -414,21 +414,68 @@ for p, protocol in enumerate(protocols):
     #                    behavior_split=True)
 
 
-#%%
-#drifting
-ep = ep_s_[2][24]
-ep.visual_stim
-image =  ep.visual_stim.get_image(0)
-image =  np.rot90(image, k=1)
-print(image)
+#%% Test datafiles
+##########################################################################
+datafolder = os.path.join(Path('E:'),'DATA', 'In_Vivo_experiments','Vision-survey', 'NDNF-Cre','NWBs')
+SESSIONS = scan_folder_for_NWBfiles(datafolder)
+SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
+dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
+                 'method_for_F0' : 'sliding_percentile', # either 'minimum', 'percentile', 'sliding_minimum', or 'sliding_percentile'
+                 'sliding_window' : 300. , # seconds (used only if METHOD= 'sliding_minimum' | 'sliding_percentile')
+                 'percentile' : 10. , # for baseline (used only if METHOD= 'percentile' | 'sliding_percentile')
+                 'neuropil_correction_factor' : 0.8 }# fraction of neuropil substracted to fluorescence
 
-fig, ax = pt.figure()
-ax.axis("off")
-ax.imshow(image, cmap=pt.plt.cm.binary_r, vmin=0, vmax=1)
+data_s = []
+for index in range(len(SESSIONS['files'])):
+    filename = SESSIONS['files'][index]
+    data = Data(filename,verbose=False)
+    data.build_dFoF(**dFoF_options, verbose=False)
+    data.init_visual_stim() #initializes visual stim (7 protocols (experiments) per file)
+    print(data.protocols)
+    data_s.append(data)
+
+#%%
+protocols = ['Natural-Images-4-repeats']
+
+ep_s_ = []
+for protocol in protocols: 
+    ep_s = []
+    for i, data in enumerate(data_s): 
+        print("File ", i)
+        ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed', 'rawFluo'])
+        ep.init_visual_stim(data) 
+        ep_s.append(ep)
+    ep_s_.append(ep_s)
+
+#%%
+for p, protocol in enumerate(protocols):
+    ep_s = ep_s_[p]
+    plot_evoked_pattern(EP_s=ep_s, 
+                        quantity='dFoF', 
+                        with_stim_inset=True, 
+                        behavior_split=False)
+    #plot_evoked_pattern(EP_s=ep_s, 
+    #                    quantity='dFoF', 
+    #                    with_stim_inset=True, 
+    #                    behavior_split=True)
+
+
+#%%
+ep = ep_s_[0][2]
+ep.visual_stim
+for i in range(2):
+    image =  ep.visual_stim.get_image(i)
+    image =  np.rot90(image, k=1)
+    print(image)
+
+    fig, ax = pt.figure()
+    ax.axis("off")
+    ax.imshow(image, cmap=pt.plt.cm.binary_r, vmin=0, vmax=1)
+    #fig.savefig(f'visual-stim_NDNFold-looming-{i}.png', format='png', dpi=600, transparent=True)
 
 #%%
 #natural
-ep = ep_s_[1][0]
+ep = ep_s_[0][0]
 ep.visual_stim
 image =  ep.visual_stim.get_image(1)
 image =  np.rot90(image, k=1)
@@ -459,11 +506,11 @@ data = data_s_yann[8]
 indexes = []
 n_tot_ep = len(data.visual_stim.experiment['protocol_id'])
 for index in range(0,n_tot_ep):
-    if data.visual_stim.experiment['protocol_id'][index]==4: #4 for Yann
+    if data.visual_stim.experiment['protocol_id'][index]==2: #4 for Yann
         #if data.visual_stim.experiment['Image-ID'][index]==4:
             indexes.append(index)
 #%%
-for index in indexes[:n_tot_ep]:
+for index in indexes[:2]:#n_tot_ep]:
     print("Image ID", data.visual_stim.experiment['Image-ID'][index])
     image = data.visual_stim.get_image(index=index)
     #NIarray = data.visual_stim.experiment['protocol_id'][index].NIarray
@@ -472,7 +519,9 @@ for index in indexes[:n_tot_ep]:
     fig, ax = pt.figure()
     ax.imshow(image, cmap=pt.plt.cm.binary_r, vmin=0, vmax=1)
     ax.axis('off')
-    fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/stim_natural_{index}.svg'))
+    #fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/stim_natural_{index}.svg'))
+    fig.savefig(f'visual-stim_visionsurvey-natIm-{index}.png', format='png', dpi=600, transparent=True)
+
 
 #%%
 #np.sum[data.visual_stim.experiment['Image-ID'][index]==3 for index in indexes]

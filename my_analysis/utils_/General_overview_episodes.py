@@ -12,8 +12,6 @@ import itertools
 from physion.analysis.episodes.build import EpisodeData
 
 # %%
-
-
 def compute_high_arousal_cond(episodes, 
                               pre_stim = 0,
                               pupil_threshold = 0.29, 
@@ -43,7 +41,7 @@ def compute_high_arousal_cond(episodes,
         if pupil_threshold is not None: 
             start = int(pre_stim*1000)
             end = int(start + episodes.time_duration[0]*1000)
-            values = episodes.pupil_diameter[:, start:end]  ## check if these boundaries cause problem #1000:3001
+            values = episodes.pupil[:, start:end]  ## check if these boundaries cause problem #1000:3001
             for value in values: 
                 if (np.mean(value) > pupil_threshold):
                     cond.append(True)
@@ -61,7 +59,7 @@ def compute_high_arousal_cond(episodes,
         if running_speed_threshold is not None: 
             start = int(pre_stim*1000)
             end = int(start + episodes.time_duration[0]*1000)
-            values = episodes.running_speed[:, start:end]  ## check if these boundaries cause problem #1000:3001
+            values = episodes.running[:, start:end]  ## check if these boundaries cause problem #1000:3001
             for value in values: 
                 if (np.mean(value) > running_speed_threshold):
                     cond.append(True)
@@ -161,7 +159,8 @@ def plot_dFoF_of_protocol(data_s,
                             right = 2, 
                             left = 2, 
                             figsize=(10,4),
-                            ax_scale=(1.2, 1.5))  
+                            ax_scale=(1.2, 1.5),
+                            wspace=1.4, hspace=1.8)  
     
     elif "drifting-grating" in data_s[0].protocols:
         fig, AX = pt.figure(axes_extents=[[[1,1]] * 3],
@@ -201,7 +200,7 @@ def plot_dFoF_of_protocol(data_s,
                             right = 2, 
                             left = 2, 
                             figsize=(10,4),
-                            ax_scale=(1.2, 1.5))  
+                            ax_scale=(1.2, 1.8))  
 
     
     elif data_s[0].protocols[0]=="ffSG-8ori-2ctrst+1sPrePostOpto" :
@@ -209,7 +208,7 @@ def plot_dFoF_of_protocol(data_s,
                                           [[1,1]] * 8,
                                           [[1,1]] * 8, 
                                           [[1,1]] * 8],  
-                            top=8, 
+                            top=10, 
                             bottom = 8,
                             right = 2, 
                             left = 2, 
@@ -482,7 +481,8 @@ def plot_dFoF_of_protocol(data_s,
                                 xticks=np.arange(-1, time_max+1, 1), 
                                 xlabel='Time (s)',
                                 xlim=[episodes.t[0], episodes.t[-1]], 
-                                ylim=ylim)
+                                ylim=ylim, 
+                                fontsize=15)
                 
                     ax.axvspan(0,
                             episodes.time_duration[0],
@@ -493,8 +493,8 @@ def plot_dFoF_of_protocol(data_s,
 
         if data.protocols[0]=="ff-gratings-2orientations-8contrasts-15repeats":
             if norm : 
-                AX[0][0].set_ylabel("a = 0  \n dFoF (normalized)")
-                AX[1][0].set_ylabel("a = 90 \n dFoF (normalized)")
+                AX[0][0].set_ylabel("a = 0  \n dFoF\n (normalized)")
+                AX[1][0].set_ylabel("a = 90 \n dFoF\n (normalized)")
             else: 
                 AX[0][0].set_ylabel("a = 0  \n dFoF ")
                 AX[1][0].set_ylabel("a = 90 \n dFoF ")
@@ -540,7 +540,8 @@ def plot_dFoF_of_protocol(data_s,
             else:
                 AX[-1][-1].annotate('average over %i sessions ,   ' \
                 'mean$\\pm$SEM across sessions' % len(data_s),
-                                (-2, -1), xycoords='axes fraction')
+                                (-4, -1.5), xycoords='axes fraction', 
+                                fontsize=15)
         elif roiIndex is not None and subset_rois is None:
             if mode == "single":
                 AX[-1][-1].annotate('roi #%i ,   rec: %s' 

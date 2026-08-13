@@ -5,7 +5,7 @@
 import os, sys
 from pathlib import Path
 
-sys.path += ['../../physion/src'] # add src code directory for physion
+sys.path += ['../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 
 sys.path += ['../']
@@ -45,6 +45,7 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
                 'neuropil_correction_factor': 0.8}
 
 data_s_con = []
+nROIS = 0
 for idx, filename in enumerate(SESSIONS['files']):
     data = Data(filename, verbose=False)
     data.build_dFoF(**dFoF_options)
@@ -53,8 +54,20 @@ for idx, filename in enumerate(SESSIONS['files']):
     data.build_pupil_diameter()
     data_s_con.append(data)
     print(idx, data.protocols)
+    nROIS += data.nROIs
+
+#%%
+nROIS
 #%% [markdown]
 ## All individual files
+
+#%%
+#plot traces
+fig, ax = plot_dFoF_of_protocol(data_s=data_s_con, protocol=data.protocols[0], ylim=[-0.15,0.15], subset_rois=None, color_trace='black')
+#%%
+#fig.savefig(f'staticgrating_traces.png', format='png', dpi=600, transparent=True)
+#%%
+
 #%%
 #dict_annotation, fig1, fig2, fig3, \
 #fig4, fig5, fig6, fig7, fig8, fig9, fig10 = generate_figures(data_s_con, 
@@ -186,6 +199,7 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
                 'neuropil_correction_factor': 0.8}
 
 data_s_con_SST = []
+nROIS = 0
 for idx, filename in enumerate(SESSIONS['files']):
     data = Data(filename, verbose=False)
     data.build_dFoF(**dFoF_options)
@@ -193,6 +207,10 @@ for idx, filename in enumerate(SESSIONS['files']):
     data.build_facemotion()
     data.build_pupil_diameter()
     data_s_con_SST.append(data)
+    nROIS += data.nROIs
+
+#%%
+nROIS
 
 #%%
 fig1, fig2, fig3, fig4, fig5 = generate_figures_GROUP(data_s_con_SST, 

@@ -1,4 +1,4 @@
-# %% [markdown]
+# %% [markdown]P
 # FUNCTONS USEFUL TO PLOT RESPONSIVENESS
 
 # %% PACKAGES
@@ -13,7 +13,7 @@ from physion.dataviz.imaging import show_CaImaging_FOV
 from physion.dataviz.raw import plot as plot_raw
 from physion.utils import plot_tools as pt
 from physion.analysis.protocols.orientation_tuning import\
-        plot_orientation_tuning_curve, \
+        plot_orientation_tuning_curve,\
         plot_selectivity, \
         plot_responsiveness
 from physion.analysis.protocols.orientation_tuning import compute_tuning_response_per_cells,\
@@ -490,6 +490,15 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n, subset_rois=None,
     # Compute session-aggregated mean and SEM
     values = np.nanmean(mean_vals_s, axis=0)
     yerr = stats.sem(mean_vals_s, axis=0, nan_policy='omit')
+
+    # Reorder only for the 8 orientations × 2 contrasts protocol
+    if p[0] == 'ff-gratings-8orientation-2contrasts-15repeats':
+        n_ori = len(angles)
+        n_con = len(contrasts)
+
+        values = np.asarray(values).reshape(n_ori, n_con).T.reshape(-1)
+        yerr = np.asarray(yerr).reshape(n_ori, n_con).T.reshape(-1)
+
     x = np.arange(len(values))
 
     # Plot
@@ -509,6 +518,7 @@ def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n, subset_rois=None,
         AX.set_ylabel('variation \ndFoF')
     
     return 0
+
 """
 def plot_barplot2_of_protocol(data_s, AX, idx,  p, subplots_n, subset_rois=None, stat_test_props={}):
     mean_vals_s = []  # store per-session mean responses
@@ -641,6 +651,12 @@ def generate_figures_GROUP(data_s,
     elif protocols[0] == 'drifting-grating':
         plot_resp_vs_param(data_s, p=protocols[0], AX=AX3, test = test, repetition_keys = ["repeat", "angle"], means=means, param=None)
 
+    print("hhhh beg")
+    fig_traces.savefig(f'stgr8ori_traces.png', format='png', dpi=600, transparent=True)
+    fig_vdFoF.savefig(f'stgr8ori_barplot.png', format='png', dpi=600, transparent=True)
+    fig_resp_vs_param.savefig(f'stgr8ori_responsiveness.png', format='png', dpi=600, transparent=True)
+    fig_resp_vs_param2.savefig(f'stgr8ori_responsiveness2.png', format='png', dpi=600, transparent=True)
+    print("hhhh end")
 
     fig1 = figure_to_array(fig_traces)
     fig2 = figure_to_array(fig_vdFoF)
@@ -648,6 +664,8 @@ def generate_figures_GROUP(data_s,
     fig4 = figure_to_array(fig_resp_vs_param2)
     fig5 = figure_to_array(fig_resp_vs_param3)
     print(f"Fig 2-3-4-5 ok: {elapsed:.2f} seconds")
+
+    
 
     if test =='contrast':
         return fig1, fig2, fig3, fig4, fig5
