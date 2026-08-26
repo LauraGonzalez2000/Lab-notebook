@@ -2,7 +2,7 @@ import datetime, pathlib
 import os, shutil, argparse
 import git # pip install gitpython
 
-ARCHIVE = '_archives'
+ARCHIVE = '_scripts'
 
 def archive_file(args, test=False):
 
