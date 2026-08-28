@@ -113,6 +113,7 @@ def natural_images(Screen='', Nrepeat=1, x=0, y=0):
         "-----------------------------------------------------------------------1":0,
         "presentation-duration": 2.0,
         "Image-ID": 1,
+        "radius": 200,
         "-----------------------------------------------------------------------2":0,
         "contrast-1": 0.2, "contrast-2": 1.0, "N-contrast": 3,
         "-----------------------------------------------------------------------3":0,
@@ -147,7 +148,7 @@ def looming(Screen='', Nrepeat=1, x=0, y=0):
 def MultiProtocol(Screen='', 
                   Nrepeat=None, 
                   interstim=6.0,
-                  #   jitter=2.0,
+                  jitter=2.0,
                   x=0, y=0):
    
     multiprotocol = """{
@@ -157,11 +158,31 @@ def MultiProtocol(Screen='',
         "movie_refresh_freq":30.0,
         "units":"cm",
         "Screen": "%s",
+        "Opto-stim":{
+            "pre_window":1.0,
+            "post_window":1.0,
+            "Protocol-1":{
+                "trials":"odd"
+            },
+            "Protocol-2":{
+                "trials":"odd"
+            },
+            "Protocol-3":{
+                "trials":"odd"
+            },
+            "Protocol-4":{
+                "trials":"odd"
+            },
+            "Protocol-5":{
+                "trials":"odd"
+            }
+        },
         "presentation-prestim-period": 10.0,
         "presentation-poststim-period": 10.0,
         "presentation-interstim-period": %.1f,
+        "presentation-interstim-jitter": %.1f,
         "presentation-blank-screen-color": 0.5,
-    """ % (Screen, interstim)
+    """ % (Screen, interstim, jitter)
 
     i = 1 # protocol counter
     for protocol_func, protocol_name, nrepeats in zip(
