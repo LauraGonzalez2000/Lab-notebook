@@ -20,6 +20,7 @@ from PDF_layout import PDF4
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
+from pathlib import Path
 
 #%%
 def figure_to_array(fig):
@@ -150,7 +151,8 @@ def create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, segmen
 ######################################################################################################
 
 #%%
-base_folder = os.path.join(os.path.expanduser('~'),'DATA', 'In_Vivo_experiments', 'Ori-contrasts','NDNF-Cre','Processed', 'intrinsic_img','2026_03_10')
+#base_folder = os.path.join(os.path.expanduser('~'),'DATA', 'In_Vivo_experiments', 'Ori-contrasts','NDNF-Cre','Processed', 'intrinsic_img','2026_03_10')
+base_folder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'Thy1GCaMP-NDNF-Cre','Processed', 'intrinsic_img', '2026_08_26', '16-37-45')
 #%%
 '''
 segmentation_params={'phaseMapFilterSigma': 8.,

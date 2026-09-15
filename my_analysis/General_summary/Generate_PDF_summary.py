@@ -15,16 +15,20 @@ from physion.dataviz.raw import plot as plot_raw
 from scipy import stats
 base_path = os.path.join(os.path.expanduser('~'), 'Desktop', 'NWBs')
 import random
+
+sys.path += ['../']
 from PDF_layout import PDF, PDF2, PDF3, PDF3_
 from matplotlib.backends.backend_pdf import PdfPages
 
 from utils_.General_overview_episodes import plot_dFoF_per_protocol, plot_dFoF_per_protocol2
-from Visual_Properties_analysis.Responsiveness import plot_responsiveness_per_protocol, plot_responsiveness2_per_protocol
+from utils_.Responsiveness_methods import plot_responsiveness_per_protocol, plot_responsiveness2_per_protocol
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import random
 import time
 
+from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
+from pathlib import Path
 
 #%%
 #######################################################################################################
@@ -32,23 +36,23 @@ import time
 ####################################################################################################### 
 def find_available_settings(data, debug=False):
 
-    settings = {'Locomotion': {'fig_fraction': 1,
+    settings = {'running': {'fig_fraction': 1,
                                                    'subsampling': 1,
                                                    'color': '#1f77b4'},
-                        'FaceMotion': {'fig_fraction': 1,
+                'facemotion': {'fig_fraction': 1,
                                                    'subsampling': 1,
                                                    'color': 'purple'},
-                        'Pupil': {'fig_fraction': 2,
+                'pupil': {'fig_fraction': 2,
                                                   'subsampling': 1,
                                                   'color': '#d62728'},
-                        'CaImaging': {'fig_fraction': 10,
+                'CaImaging': {'fig_fraction': 10,
                                                    'subsampling': 1,
                                                    'subquantity': 'dF/F',
                                                    'color': '#2ca02c'}}
 
     
 
-    attributes = ['facemotion', 'pupil_diameter', 'dFoF']
+    attributes = ['facemotion', 'pupil', 'dFoF']
     
     missing = [attr for attr in attributes if not hasattr(data, attr)]  # for objects
 
@@ -58,13 +62,13 @@ def find_available_settings(data, debug=False):
         else:
             print("All attributes exist")
     
-    if missing==['pupil_diameter']:
+    if missing==['pupil']:
         if debug:
             print("only pupil diameter missing")
-        settings = {'Locomotion': {'fig_fraction': 1,
+        settings = {'running': {'fig_fraction': 1,
                                                    'subsampling': 1,
                                                    'color': '#1f77b4'},
-                        'FaceMotion': {'fig_fraction': 1,
+                        'facemotion': {'fig_fraction': 1,
                                                    'subsampling': 1,
                                                    'color': 'purple'},
                         'CaImaging': {'fig_fraction': 10,
@@ -75,10 +79,10 @@ def find_available_settings(data, debug=False):
     if missing==['facemotion']:
         if debug:
             print("only pupil diameter missing")
-        settings = {'Locomotion': {'fig_fraction': 1,
+        settings = {'running': {'fig_fraction': 1,
                                                'subsampling': 1,
                                                'color': '#1f77b4'},
-                        'Pupil': {'fig_fraction': 2,
+                        'pupil': {'fig_fraction': 2,
                                           'subsampling': 1,
                                           'color': '#d62728'},
                         'CaImaging': {'fig_fraction': 10,
@@ -89,21 +93,21 @@ def find_available_settings(data, debug=False):
     if missing==['dFoF']:
         if debug:
             print("only Ca imaging missing")
-        settings = {'Locomotion': {'fig_fraction': 1,
+        settings = {'running': {'fig_fraction': 1,
                                                'subsampling': 1,
                                                'color': '#1f77b4'},
-                    'FaceMotion': {'fig_fraction': 1,
+                    'facemotion': {'fig_fraction': 1,
                                                    'subsampling': 1,
                                                    'color': 'purple'},
-                    'Pupil': {'fig_fraction': 2,
+                    'pupil': {'fig_fraction': 2,
                                           'subsampling': 1,
                                           'color': '#d62728'}}
                         
     
-    if missing==['facemotion', 'pupil_diameter']:
+    if missing==['facemotion', 'pupil']:
         if debug:
             print('facemotion and pupil diameter missing')
-        settings = {'Locomotion': {'fig_fraction': 1,
+        settings = {'running': {'fig_fraction': 1,
                                                'subsampling': 1,
                                                'color': '#1f77b4'},
                     'CaImaging': {'fig_fraction': 10,
@@ -273,7 +277,7 @@ def generate_figures(data_s, cell_type='nan', subplots_n=9, data_type = 'Sofia')
                 fig2, _ = plot_raw(data, 
                                     tlim=[0, data.t_dFoF[-1]], 
                                     settings=settings, 
-                                    figsize=(9,3),
+                                    #figsize=(9,3),
                                     zoom_area=[((2/20)*data.t_dFoF[-1], (3/20)*data.t_dFoF[-1]),
                                                 ((15/20)*data.t_dFoF[-1], (16/20)*data.t_dFoF[-1])],
                                     grey=True, 
@@ -284,15 +288,15 @@ def generate_figures(data_s, cell_type='nan', subplots_n=9, data_type = 'Sofia')
                 fig2, _ = plot_raw(data, 
                                     tlim=[0, data.t_dFoF[-1]], 
                                     settings=settings, 
-                                    figsize=(9,3),
+                                    #figsize=(9,3),
                                     zoom_area=[((2/20)*data.t_dFoF[-1], (3/20)*data.t_dFoF[-1]),
                                                 ((15/20)*data.t_dFoF[-1], (16/20)*data.t_dFoF[-1])])
             
             fig3, _ = plot_raw(data, tlim=[(2/20)*data.t_dFoF[-1], (3/20)*data.t_dFoF[-1]],
-                            settings=settings, figsize=(9,3))
+                            settings=settings)
             
             fig4, _ = plot_raw(data, tlim=[(15/20)*data.t_dFoF[-1], (16/20)*data.t_dFoF[-1]],
-                            settings=settings, figsize=(9,3))
+                            settings=settings)
             
               
         fig5, _ = plot_dFoF_per_protocol(data_s=[data], protocols=protocols, subplots_n=subplots_n)
@@ -474,6 +478,34 @@ def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
 ##################################################################################################################
 # %% [markdown]
 # # Generate final figures
+
+#%%
+#Vision survey opto
+
+#%%
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'vision-survey-opto','NDNF-Cre','NWBs')
+SESSIONS = scan_folder_for_NWBfiles(datafolder)
+SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
+
+dFoF_options = {
+        'roi_to_neuropil_fluo_inclusion_factor': 1.0,
+        'method_for_F0': 'sliding_percentile',
+        'sliding_window': 300.,
+        'percentile': 10.,
+        'neuropil_correction_factor': 0.8}
+
+data_s = []
+for idx, filename in enumerate(SESSIONS['files']):
+    data = Data(filename, verbose=False)
+    data.build_dFoF(**dFoF_options, verbose=False)
+    data.build_running()
+    data.build_facemotion()
+    data.build_pupil()
+    data_s.append(data)
+#%% [markdown]
+# ## All individual files
+#%%
+generate_figures(data_s, cell_type='NDNF-opto', subplots_n=5, data_type = 'Sofia')
 #%% [markdown]
 # ## YANN DATASET
 

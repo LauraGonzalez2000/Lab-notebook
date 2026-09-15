@@ -681,9 +681,10 @@ def plot_responsiveness_per_protocol(data_s,
         
     return fig, AX
 
+
 #%% Load data
 datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol',\
-                           'NDNF-WT-Dec-2022','NWBs_rebuilt')
+                        'NDNF-WT-Dec-2022','NWBs_rebuilt')
 #datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','Vision-survey', \
 #                           'NDNF-Cre','NWBs')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
@@ -732,10 +733,10 @@ protocols = ["static-patch", "drifting-gratings", "Natural-Images-4-repeats"]
 #protocols = ["moving-dots"] -
 
 fig_responsiveness, _ = plot_responsiveness_per_protocol(data_s, 
-                                                         protocols=protocols, 
-                                                         by_average='ROI', 
-                                                         behavior_split=True, 
-                                                         subprotocol_split=True)
+                                                        protocols=protocols, 
+                                                        by_average='ROI', 
+                                                        behavior_split=True, 
+                                                        subprotocol_split=True)
 fig_responsiveness.savefig(f'piecharts.png', format='png', dpi=600, transparent=True)
 #fig_responsiveness.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/responsiveness.svg'))
 #%%

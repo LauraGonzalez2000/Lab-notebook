@@ -193,9 +193,12 @@ if 0:
               name='looming', rm=False)
 if 0:
   x, y =0, 0
-  build_movie(center_patch(Screen=Screen, Nrepeat=1, x=x, y=y),
+  build_movie(center_patch(Screen=Screen, Nrepeat=2, x=x, y=y),
               name='center-patch')
+
+
+
 if 1:
   build_movie(MultiProtocol(Screen=Screen, Nrepeat=None), # Nrepeat=None to have the desired ones
-              name='vision-survey+1sPrePostOpto',
+              name='vision-survey-short+1sPrePostOpto',
               rm=False)

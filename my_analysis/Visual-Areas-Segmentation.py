@@ -14,7 +14,7 @@
 import numpy as np
 import sys
 import os
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 import physion.utils.plot_tools as pt
 from physion.intrinsic.tools import *
 from physion.intrinsic.analysis import RetinotopicMapping
@@ -22,16 +22,20 @@ import matplotlib.pylab as plt
 from PIL import Image
 from physion.intrinsic import tools as intrinsic_analysis
 
+
+from pathlib import Path
 # %% [markdown]
 # ## Load data
 
 # %%
-dataFolder = os.path.join(os.path.expanduser('~'), 'DATA', 
-                        'In_Vivo_experiments', 'NDNF-Cre-batch3', 'Processed',
-                        'intrinsic_img','2026_01_16', '17-09-48')
+dataFolder = os.path.join(Path("E:/"), 'DATA', 
+                          'In_Vivo_experiments','opto', 
+                          'Thy1GCaMP-NDNF-Cre','Processed',
+                          'intrinsic_img','2026_08_14', '11-24-32')
+
 
 # vasculature picture
-imVasc = np.array(Image.open(os.path.join(dataFolder, 'vasculature.tif')))
+imVasc = np.array(Image.open(os.path.join(dataFolder, 'vasculature-012.tif')))
 fig, ax = pt.figure(ax_scale=(2,2))
 ax.imshow(imVasc**1, cmap=plt.cm.gray) 
 plt.axis('off');
@@ -46,10 +50,9 @@ maps = np.load(os.path.join(dataFolder, 'raw-maps.npy') ,
 #maps = dict(np.load(os.path.join(dataFolder, 'raw-maps.npz') , 
 #               allow_pickle=True))
 
-# %%
 intrinsic_analysis.plot_retinotopic_maps(maps, map_type='altitude');
 
-# %%
+
 intrinsic_analysis.plot_retinotopic_maps(maps, map_type='azimuth');
 
 # %% [markdown]

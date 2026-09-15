@@ -16,8 +16,7 @@ pt.set_style('manuscript')
 #functions
 def plot_effect(Ep,
                 roi=None,
-                title='', 
-                cond_LED = None):
+                title=''):
     
     fig, AX = pt.figure(\
         ax_scale=(1.5,0.95),
@@ -36,7 +35,8 @@ def plot_effect(Ep,
     else:
         dFoF = Ep.dFoF[:,roi,:]
 
-    conditions = [('vis. stim', ~cond_LED),('vis. stim + OPTO', cond_LED)]
+    LED_on = Ep.opto.mean(axis=1)>0
+    conditions = [('vis. stim', ~LED_on),('vis. stim + OPTO', LED_on)]
     contrasts = [0.5, 1]
 
     amplitudes = []
@@ -112,7 +112,8 @@ def plot_effect(Ep,
     return fig
 
 # %%
-datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'NDNF-Cre','NWBs')
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'vision-survey-opto','NDNF-Cre','NWBs')
+
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
@@ -125,35 +126,42 @@ data_s = []
 for idx, filename in enumerate(SESSIONS['files']):
     data = Data(filename, verbose=False)
     data.build_dFoF(**dFoF_options)
-    data.build_running_speed()
+    data.build_running()
     data.build_facemotion()
-    data.build_pupil_diameter()
+    data.build_pupil()
     data_s.append(data)
     print(idx, data.protocols)
+
+
+#%%
+protocol = 'protocol-center-patch'
 
 #%% AVERAGE ALL ROIS
 index = 1
 NEUROPIL_FACTOR = 0.7
 data = Data(SESSIONS['files'][index])
 data.build_dFoF(neuropil_correction_factor=NEUROPIL_FACTOR)
-Ep = EpisodeData(data, protocol_id=0, quantities=['dFoF', 'LED'])
-LED_on = Ep.LED.mean(axis=1)>0 # LED "On" episode condition
+protocol = 'protocol-looming'
+#['protocol-center-patch' 'protocol-natural-images' 'protocol-grey-screen'
+# 'protocol-natural-images' 'protocol-looming'
+Ep = EpisodeData(data, protocol_name = protocol, quantities=['dFoF', 'opto'], verbose=True)
+
+#%%
+print(len(Ep.dFoF[0][0]))
+#%%
 fig = plot_effect(Ep, 
             title='%s\n **ALL ROIs (mean dFoF) **\n\n' % data.filename+\
-                'neuropil-substraction-factor=%.2f' % NEUROPIL_FACTOR, 
-            cond_LED = LED_on)
+                'neuropil-substraction-factor=%.2f' % NEUROPIL_FACTOR)
 
 #%% ALL ROIS ONE BY ONE
 NEUROPIL_FACTOR = 0.7
 data = Data(SESSIONS['files'][index])
 data.build_dFoF(neuropil_correction_factor=NEUROPIL_FACTOR)
-Ep = EpisodeData(data, protocol_id=0, quantities=['dFoF', 'LED'])
-LED_on = Ep.LED.mean(axis=1)>0 # LED "On" episode condition
+Ep = EpisodeData(data, protocol_id=0, quantities=['dFoF', 'opto'])
 for roi in range(data.nROIs):
     fig = plot_effect(Ep, roi=roi,
                 title='%s, ROI #%i \n' % (data.filename, roi)+\
-                    'neuropil-substraction-factor=%.2f' % NEUROPIL_FACTOR, 
-                    cond_LED = LED_on)
+                    'neuropil-substraction-factor=%.2f' % NEUROPIL_FACTOR)
     
 
 #%% ALL angles ONE BY ONE
@@ -162,9 +170,23 @@ from utils_.General_overview_episodes import\
         plot_dFoF_of_protocol
 
 protocols = ['ffSG-8ori-2ctrst+1sPrePostOpto']
+#%%
+ylim = [-0.3,0.4]   
+fig_traces, _     = plot_dFoF_of_protocol(data_s=[data_s[1]], 
+                                          protocol=protocols[0], 
+                                          ylim=ylim, 
+                                          norm=True, 
+                                          opto=True)
+#%%
 ylim = [-0.3,0.4]
-fig_traces, _     = plot_dFoF_of_protocol(data_s=[data_s[0]], protocol=protocols[0], ylim=ylim, norm=True, opto=True)
-ylim = [-0.3,0.4]
-fig_traces, _     = plot_dFoF_of_protocol(data_s=[data_s[1]], protocol=protocols[0], ylim=ylim, norm=True, opto=True)
+for i in range(15):
+    fig_traces, _     = plot_dFoF_of_protocol(data_s=[data_s[1]], 
+                                            index=i,
+                                            protocol=protocols[0], 
+                                            ylim=ylim, 
+                                            norm=True, 
+                                            opto=True)
+#%%
 #ylim = [0.4,1]
 #fig_traces, _     = plot_dFoF_of_protocol(data_s=data_s, protocol=protocols[0], ylim=ylim, norm=False)
+#%%

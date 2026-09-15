@@ -139,7 +139,7 @@ def plot_neuropil_vs_fluo(Ep,
     return fig
 
 # %%
-datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'NDNF-Cre','NWBs')
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto','vision-survey-opto', 'NDNF-Cre','NWBs')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
@@ -152,9 +152,9 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
 index = 0
 data = Data(filename=SESSIONS['files'][index], verbose=False)
 data.build_dFoF(**dFoF_options)
-data.build_running_speed()
+data.build_running()
 data.build_facemotion()
-data.build_pupil_diameter()
+data.build_pupil()
 
 #%%
 _ = show_CaImaging_FOV(data, NL=4)
@@ -173,9 +173,9 @@ pt.set_plot(ax,
 index = 1
 data = Data(filename=SESSIONS['files'][index], verbose=False)
 data.build_dFoF(**dFoF_options)
-data.build_running_speed()
+data.build_running()
 data.build_facemotion()
-data.build_pupil_diameter()
+data.build_pupil()
 
 #%%
 _ = show_CaImaging_FOV(data, NL=4)
@@ -245,15 +245,15 @@ pt.annotate(AX[0][2], 'neuropil-subst.=1.0', (1,1), color='tab:green', ha='right
 index = 0
 data = Data(SESSIONS['files'][index])
 data.build_dFoF(neuropil_correction_factor=0.7)
-Ep = EpisodeData(data, protocol_id=0, quantities=['dFoF', 'LED'])
-LED_on = Ep.LED.mean(axis=1)>0 # LED "On" episode condition
+Ep = EpisodeData(data, protocol_id=0, quantities=['dFoF', 'opto'])
+LED_on = Ep.opto.mean(axis=1)>0 # LED "On" episode condition
 
 #%%
 for NEUROPIL_FACTOR in [0.7, 1.0]:
     data = Data(SESSIONS['files'][index])
     data.build_dFoF(neuropil_correction_factor=NEUROPIL_FACTOR)
-    Ep = EpisodeData(data, protocol_id=0, quantities=['dFoF', 'LED'])
-    LED_on = Ep.LED.mean(axis=1)>0 # LED "On" episode condition
+    Ep = EpisodeData(data, protocol_id=0, quantities=['dFoF', 'opto'])
+    LED_on = Ep.opto.mean(axis=1)>0 # LED "On" episode condition
     plot_effect(Ep, 
                 title='%s\n **ALL ROIs (mean dFoF) **\n\n' % data.filename+\
                     'neuropil-substraction-factor=%.2f' % NEUROPIL_FACTOR, 
@@ -265,8 +265,8 @@ NEUROPIL_FACTOR = 0.7
 index = 1
 data = Data(SESSIONS['files'][index])
 data.build_dFoF(neuropil_correction_factor=NEUROPIL_FACTOR)
-Ep = EpisodeData(data, protocol_id=0, quantities=['dFoF', 'LED'])
-LED_on = Ep.LED.mean(axis=1)>0 # LED "On" episode condition
+Ep = EpisodeData(data, protocol_id=0, quantities=['dFoF', 'opto'])
+LED_on = Ep.opto.mean(axis=1)>0 # LED "On" episode condition
 for roi in range(data.nROIs):
     plot_effect(Ep, roi=roi,
                 title='%s, ROI #%i \n' % (data.filename, roi)+\
@@ -286,12 +286,12 @@ data.build_rawFluo()
 data.build_neuropil()
 data.build_dFoF(neuropil_correction_factor=0.0)
 Ep = EpisodeData(data, protocol_id=0, 
-                 quantities=['rawFluo', 'neuropil', 'dFoF', 'LED'])
+                 quantities=['rawFluo', 'neuropil', 'dFoF', 'opto'])
 
 #%%
 for roi in range(data.nROIs):
     summary_stats = Ep.pre_post_statistics(episode_cond= ~LED_on,
-                        response_args={'quantity':'dFoF', 'roiIndex':roi},
+                        response_args={'quantity':'dFoF', 'index':roi},
                         stat_test_props={},
                         repetition_keys=['repeat'],
                         nMin_episodes=1)

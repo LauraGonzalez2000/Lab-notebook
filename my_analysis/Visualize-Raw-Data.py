@@ -14,10 +14,13 @@ import physion.utils.plot_tools as pt
 pt.set_style('dark')
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 
+from pathlib import Path
+
 # %%
 # load a datafile
 
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments', 'NDNF-Cre-batch2', 'NWBs')
+#datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments', 'NDNF-Cre-batch2', 'NWBs')
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'vision-survey-opto','NDNF-Cre','NWBs')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -27,7 +30,7 @@ dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discar
                  'sliding_window' : 300. , # seconds (used only if METHOD= 'sliding_minimum' | 'sliding_percentile')
                  'percentile' : 10. , # for baseline (used only if METHOD= 'percentile' | 'sliding_percentile')
                  'neuropil_correction_factor' : 0.8 }# fraction of neuropil substracted to fluorescence
-
+#%%
 index = 1
 filename = SESSIONS['files'][index]
 
