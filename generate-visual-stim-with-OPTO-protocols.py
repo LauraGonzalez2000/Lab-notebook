@@ -16,9 +16,9 @@ def build_movie(json_protocol, name='temp', rm=True):
         f.write(os.path.join(protocol_folder, json_protocol))
         
     if 'posix' in os.name:
-        cmd = 'python -m physion.visual_stim.build %s.json' % os.path.join(protocol_folder, name)
+        cmd = 'python -m physion.visual_stim.build "%s.json"' % os.path.join(protocol_folder, name)
     else:
-        cmd = 'python -m physion.visual_stim.build %s.json' % os.path.join(protocol_folder, name)
+        cmd = 'python -m physion.visual_stim.build "%s.json"' % os.path.join(protocol_folder, name)
     
     p = subprocess.Popen(cmd,
             cwd = os.path.join('.', 'physion', 'src'),
