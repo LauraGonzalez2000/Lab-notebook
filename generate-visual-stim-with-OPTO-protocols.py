@@ -6,15 +6,19 @@ Screen="Dell-2020"
 x=0.
 y=0.
 
+protocol_folder = os.path.join(os.path.expanduser('~'),
+            'OneDrive - ICM', 'Lab-Notebook', 'visualStim-protocols')
+
+
 def build_movie(json_protocol, name='temp', rm=True):
 
     with open('%s.json' % name, 'w') as f:
-        f.write(json_protocol)
+        f.write(os.path.join(protocol_folder, json_protocol))
         
     if 'posix' in os.name:
-        cmd = 'python -m physion.visual_stim.build ../../%s.json' % name
+        cmd = 'python -m physion.visual_stim.build %s.json' % os.path.join(protocol_folder, name)
     else:
-        cmd = 'python -m physion.visual_stim.build ..\\..\\%s.json' % name
+        cmd = 'python -m physion.visual_stim.build %s.json' % os.path.join(protocol_folder, name)
     
     p = subprocess.Popen(cmd,
             cwd = os.path.join('.', 'physion', 'src'),
