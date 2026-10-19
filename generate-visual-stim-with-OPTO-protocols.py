@@ -6,6 +6,7 @@ Screen="Dell-2020"
 x=0.
 y=0.
 
+
 protocol_folder = os.path.join(os.path.expanduser('~'),
             'OneDrive - ICM', 'Lab-Notebook', 'visualStim-protocols')
 
@@ -13,12 +14,12 @@ protocol_folder = os.path.join(os.path.expanduser('~'),
 def build_movie(json_protocol, name='temp', rm=True):
 
     with open('%s.json' % name, 'w') as f:
-        f.write(os.path.join(protocol_folder, json_protocol))
+        f.write(json_protocol)
         
     if 'posix' in os.name:
-        cmd = 'python -m physion.visual_stim.build "%s.json"' % os.path.join(protocol_folder, name)
+        cmd = 'python -m physion.visual_stim.build ../../%s.json -o "%s"' % (name, protocol_folder)
     else:
-        cmd = 'python -m physion.visual_stim.build "%s.json"' % os.path.join(protocol_folder, name)
+        cmd = 'python -m physion.visual_stim.build ..\\..\\%s.json -o "%s"' % (name, protocol_folder)
     
     p = subprocess.Popen(cmd,
             cwd = os.path.join('.', 'physion', 'src'),
@@ -191,7 +192,7 @@ def MultiProtocol(Screen='',
     i = 1 # protocol counter
     for protocol_func, protocol_name, nrepeats in zip(
                     [center_patch, ff_drifting_grating, grey_screen, natural_images, looming],
-                    ['center-patch', 'natural-images', 'grey-screen', 'natural-images', 'looming'],
+                    ['center-patch', 'ff_drifting_grating', 'grey-screen', 'natural-images', 'looming'],
                     [20, 20, 20, 20, 10]):
 
         if Nrepeat is not None:

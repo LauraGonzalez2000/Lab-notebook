@@ -20,7 +20,7 @@ def plot_effect(Ep,
     
     fig, AX = pt.figure(\
         ax_scale=(1.5,0.95),
-        axes=(len(Ep.varied_parameters['contrast']),2),
+        axes=(3,4),
         wspace=0.5, hspace=1, top=4.5)
     
     fig2, AX2 = pt.figure(\
@@ -133,21 +133,56 @@ for idx, filename in enumerate(SESSIONS['files']):
     print(idx, data.protocols)
 
 
-#%%
-protocol = 'protocol-center-patch'
-
 #%% AVERAGE ALL ROIS
-index = 1
+index = -1
 NEUROPIL_FACTOR = 0.7
 data = Data(SESSIONS['files'][index])
 data.build_dFoF(neuropil_correction_factor=NEUROPIL_FACTOR)
-protocol = 'protocol-looming'
-#['protocol-center-patch' 'protocol-natural-images' 'protocol-grey-screen'
-# 'protocol-natural-images' 'protocol-looming'
-Ep = EpisodeData(data, protocol_name = protocol, quantities=['dFoF', 'opto'], verbose=True)
+data.build_visual_stim()
+protocol = 'protocol-grey-screen'
+#[0 - center patch - 'protocol-center-patch' 
+# 1 - drifting grating - 'protocol-natural-images'  #error in building protocol!! this was fixed for next ones 
+# 2 - grey screen -      'protocol-grey-screen'
+# 3 - natural images - 'protocol-natural-images' 
+# 4 - looming        -  'protocol-looming'
+protocol_id = 0
+Ep = EpisodeData(data, protocol_id = protocol_id, quantities=['dFoF', 'opto'], verbose=True)
 
 #%%
-print(len(Ep.dFoF[0][0]))
+total_length = len(data.visual_stim.experiment['protocol_id'])
+theoretical_opto = (np.arange(total_length) % 2 == 1)
+
+#%%
+# Ensure your protocol list is a NumPy array for element-wise comparison
+protocol_ids = np.array(data.visual_stim.experiment['protocol_id'])
+
+# 2. Create a boolean mask (True where the protocol is 1, False elsewhere)
+protocol_mask = (protocol_ids == protocol_id)
+
+# 3. Apply the mask to your theoretical_opto array
+opto_for_protocol = theoretical_opto[protocol_mask]
+
+print(opto_for_protocol)
+#%%
+print(Ep.opto)
+Episodes_LED_ok = []
+
+for i in range(60):
+    fig, ax = pt.figure(\
+            ax_scale=(1.5,0.95),
+            axes=(1,1),
+            wspace=0.5, hspace=1, top=4.5)
+    
+    pt.plot(ax=ax, x=Ep.t, y = Ep.opto[i])
+    pt.plot(ax=ax, x=Ep.t, y = np.mean(Ep.dFoF[i], axis=0))
+    ax.axvspan(0, Ep.time_duration[0], color='grey', alpha=0.3, lw=0, zorder=-10)
+    #ax.axvspan(-1, Ep.time_duration[0] + 1, color='blue', alpha=0.3, lw=0, zorder=-10)
+    pt.set_plot(ax=ax,ylim =[-0.5,2])
+    if opto_for_protocol[i]==True:
+        ax.annotate("LED ON episode",xy=(1,2))
+    if opto_for_protocol[i]==False:
+            ax.annotate("LED OFF episode",xy=(1,2))
+
 #%%
 fig = plot_effect(Ep, 
             title='%s\n **ALL ROIs (mean dFoF) **\n\n' % data.filename+\
@@ -163,30 +198,3 @@ for roi in range(data.nROIs):
                 title='%s, ROI #%i \n' % (data.filename, roi)+\
                     'neuropil-substraction-factor=%.2f' % NEUROPIL_FACTOR)
     
-
-#%% ALL angles ONE BY ONE
-sys.path += ['../']
-from utils_.General_overview_episodes import\
-        plot_dFoF_of_protocol
-
-protocols = ['ffSG-8ori-2ctrst+1sPrePostOpto']
-#%%
-ylim = [-0.3,0.4]   
-fig_traces, _     = plot_dFoF_of_protocol(data_s=[data_s[1]], 
-                                          protocol=protocols[0], 
-                                          ylim=ylim, 
-                                          norm=True, 
-                                          opto=True)
-#%%
-ylim = [-0.3,0.4]
-for i in range(15):
-    fig_traces, _     = plot_dFoF_of_protocol(data_s=[data_s[1]], 
-                                            index=i,
-                                            protocol=protocols[0], 
-                                            ylim=ylim, 
-                                            norm=True, 
-                                            opto=True)
-#%%
-#ylim = [0.4,1]
-#fig_traces, _     = plot_dFoF_of_protocol(data_s=data_s, protocol=protocols[0], ylim=ylim, norm=False)
-#%%

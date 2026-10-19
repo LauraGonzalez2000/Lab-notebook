@@ -63,7 +63,7 @@ def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.0, repetition_keys 
 
         roi_summary_data = pre_post_statistics(ep,
                                                episode_cond= cond,
-                                               response_args = dict(roiIndex=roi_n),
+                                               response_args = dict(index=roi_n),
                                                response_significance_threshold=alpha,
                                                stat_test_props=stat_test_props,
                                                repetition_keys=repetition_keys)
@@ -114,7 +114,7 @@ def compute_responsiveness(ep, nROIs, alpha=0.05, window=1.5):
     for roi_n in range(nROIs):
         roi_summary_data = pre_post_statistics(ep,
                                                episode_cond = ep.find_episode_cond(),
-                                               response_args = dict(roiIndex=roi_n),
+                                               response_args = dict(index=roi_n),
                                                response_significance_threshold=alpha,
                                                stat_test_props=stat_test_props,
                                                repetition_keys=list(ep.varied_parameters.keys()))
@@ -168,7 +168,7 @@ def study_responsiveness(SESSIONS, index, protocol):
         
         roi_summary_data = pre_post_statistics(ep,
                                            episode_cond = ep.find_episode_cond(),
-                                           response_args = dict(roiIndex=roi_n),
+                                           response_args = dict(index=roi_n),
                                            response_significance_threshold=0.05,
                                            stat_test_props=stat_test_props,
                                            repetition_keys=['repeat', 'angle', 'contrast'])
@@ -228,7 +228,7 @@ def study_responsiveness_all(SESSIONS, protocol):
             
             roi_summary_data = pre_post_statistics(ep,
                                                    episode_cond = ep.find_episode_cond(),
-                                                   response_args = dict(roiIndex=roi_n),
+                                                   response_args = dict(index=roi_n),
                                                    response_significance_threshold=0.05,
                                                    stat_test_props=stat_test_props,
                                                    repetition_keys=['repeat', 'angle', 'contrast'])
@@ -369,7 +369,7 @@ def plot_responsiveness2_per_protocol(data_s, AX, idx, p, t_window=1.5, alpha=0.
         for roi_n in range(data.nROIs):
             roi_summary_data = pre_post_statistics(ep,
                                                    episode_cond = ep.find_episode_cond(),
-                                                   response_args = dict(roiIndex=roi_n),
+                                                   response_args = dict(index=roi_n),
                                                    response_significance_threshold=alpha,
                                                    stat_test_props=stat_test_props,
                                                    repetition_keys=list(ep.varied_parameters.keys()))
@@ -465,7 +465,7 @@ def plot_responsiveness2_of_protocol(data_s, AX, idx, p, t_window=1.5, alpha=0.0
             
             roi_summary_data = pre_post_statistics(ep,
                                                    episode_cond = ep.find_episode_cond(),
-                                                   response_args = dict(roiIndex=roi_n),
+                                                   response_args = dict(index=roi_n),
                                                    response_significance_threshold=alpha,
                                                    stat_test_props=stat_test_props,
                                                    repetition_keys=list(ep.varied_parameters.keys()))
@@ -858,7 +858,7 @@ def plot_responsiveness_per_protocol(data_s,
                 if behavior_split== False : 
                     roi_summary_data = pre_post_statistics(ep,
                                                     episode_cond = ep.find_episode_cond(),
-                                                    response_args = dict(roiIndex=roi_n),
+                                                    response_args = dict(index=roi_n),
                                                     response_significance_threshold=0.05,
                                                     stat_test_props=stat_test_props,
                                                     repetition_keys=list(ep.varied_parameters.keys()))
@@ -872,7 +872,7 @@ def plot_responsiveness_per_protocol(data_s,
                     if np.any(HMcond): #only if there are episodes with act condition
                         roi_summary_data_act = pre_post_statistics(ep,
                                                     episode_cond = HMcond,
-                                                    response_args = dict(roiIndex=roi_n),
+                                                    response_args = dict(index=roi_n),
                                                     response_significance_threshold=0.05,
                                                     stat_test_props=stat_test_props,
                                                     repetition_keys=list(ep.varied_parameters.keys()))
@@ -884,7 +884,7 @@ def plot_responsiveness_per_protocol(data_s,
                     if np.any(~HMcond): #only if there are episodes with rest condition
                         roi_summary_data_rest = pre_post_statistics(ep,
                                                     episode_cond = ~HMcond,
-                                                    response_args = dict(roiIndex=roi_n),
+                                                    response_args = dict(index=roi_n),
                                                     response_significance_threshold=0.05,
                                                     stat_test_props=stat_test_props,
                                                     repetition_keys=list(ep.varied_parameters.keys()))
@@ -1099,7 +1099,7 @@ def calc_responsiveness(ep, nROIs, alpha=0.05, t_window = 1.5):
     for roi_n in range(nROIs):
         roi_summary_data = pre_post_statistics(ep,
                                                episode_cond = ep.find_episode_cond(),
-                                               response_args = dict(roiIndex=roi_n),
+                                               response_args = dict(index=roi_n),
                                                response_significance_threshold=alpha,
                                                stat_test_props=stat_test_props,
                                                repetition_keys=['repeat'])

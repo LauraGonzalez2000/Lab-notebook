@@ -305,7 +305,7 @@ def plot_evoked_pattern(EP_s,
 
 #%%
 #LOAD DATA
-datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol', 'NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
@@ -319,7 +319,7 @@ for index in range(len(SESSIONS['files'])):
     filename = SESSIONS['files'][index]
     data = Data(filename,verbose=False)
     data.build_dFoF(**dFoF_options, verbose=False)
-    data.init_visual_stim() #initializes visual stim (7 protocols (experiments) per file)
+    # data.init_visual_stim() #initializes visual stim (7 protocols (experiments) per file)
     data_s_yann.append(data)
 
 #%%
@@ -334,10 +334,10 @@ for protocol in protocols:
     ep_s = []
     for i, data in enumerate(data_s_yann): 
         print("File ", i)
-        ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed', 'rawFluo'])
-        ep.init_visual_stim(data) 
+        ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running', 'rawFluo'])
         ep_s.append(ep)
     ep_s_.append(ep_s)
+
 
 #%% 
 ########################################################################
@@ -345,21 +345,21 @@ for protocol in protocols:
 ########################################################################
 for p, protocol in enumerate(protocols):
     ep_s = ep_s_[p]
-    #fig = plot_evoked_pattern(EP_s=ep_s, 
-    #                    quantity='dFoF', 
-    #                    with_stim_inset=True, 
-    #                    behavior_split=False, 
-    #                    clustering = 'amplitude')
+    fig = plot_evoked_pattern(EP_s=ep_s, 
+                        quantity='dFoF', 
+                        with_stim_inset=True, 
+                        behavior_split=False, 
+                        clustering = 'amplitude')
     #fig.savefig(f'raster-{protocol}.png', format='png', dpi=600, transparent=True)
     
     
     #fig.savefig(os.path.expanduser(f'~/Output_expe/In_Vivo/ANR-NDNF/raster_{p}.svg'))
-    fig = plot_evoked_pattern(EP_s=ep_s, 
-                        quantity='dFoF', 
-                        with_stim_inset=True, 
-                        behavior_split=True, 
-                        clustering = 'amplitude')
-    fig.savefig(f'raster_behavior-{protocol}.png', format='png', dpi=600, transparent=True)
+    #fig = plot_evoked_pattern(EP_s=ep_s, 
+    #                    quantity='dFoF', 
+    #                    with_stim_inset=True, 
+    #                    behavior_split=True, 
+    #                    clustering = 'amplitude')
+    #fig.savefig(f'raster_behavior-{protocol}.png', format='png', dpi=600, transparent=True)
 #######################################################################################################################
 #######################################################################################################################
 

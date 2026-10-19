@@ -112,7 +112,7 @@ def plot_effect(Ep,
     return fig
 
 # %%
-datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'vision-survey-opto','NDNF-Cre','NWBs')
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'ffSG-8ori-2contrasts-opto','NDNF-Cre','NWBs')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor': 1.0,
@@ -161,6 +161,7 @@ from utils_.General_overview_episodes import\
 
 protocols = ['ffSG-8ori-2ctrst+1sPrePostOpto']
 #%%
+#add bars at the end to quantify
 ylim = [-0.3,0.4]   
 fig_traces, _     = plot_dFoF_of_protocol(data_s=[data_s[1]], 
                                           protocol=protocols[0], 
@@ -170,13 +171,9 @@ fig_traces, _     = plot_dFoF_of_protocol(data_s=[data_s[1]],
 #%%
 ylim = [-0.3,0.4]
 for i in range(15):
-    fig_traces, _     = plot_dFoF_of_protocol(data_s=[data_s[1]], 
+    fig_traces, _     = plot_dFoF_of_protocol(data_s=data_s, 
                                             index=i,
                                             protocol=protocols[0], 
                                             ylim=ylim, 
                                             norm=True, 
                                             opto=True)
-#%%
-#ylim = [0.4,1]
-#fig_traces, _     = plot_dFoF_of_protocol(data_s=data_s, protocol=protocols[0], ylim=ylim, norm=False)
-#%%
