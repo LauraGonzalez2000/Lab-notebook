@@ -276,17 +276,10 @@ for protocol in protocols:
 ########################################################################
 for p, protocol in enumerate(protocols):
     ep_s = ep_s_[p]
-<<<<<<< HEAD
-    #plot_evoked_pattern(EP_s=ep_s, 
-    #                    quantity='dFoF', 
-    #                    with_stim_inset=True, 
-    #                    behavior_split=False)
-=======
     plot_evoked_pattern(EP_s=ep_s, 
                         quantity='dFoF', 
                         with_stim_inset=True, 
                         behavior_split=False)
->>>>>>> 75dbd74f60a81e600c6160b35af32fcf97e539b5
     
     plot_evoked_pattern(EP_s=ep_s, 
                         quantity='dFoF', 
