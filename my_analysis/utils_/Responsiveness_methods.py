@@ -18,7 +18,15 @@ import matplotlib as plt
 
 # COMPUTES RESPONSIVENESS
 
-def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.0, repetition_keys = ['repeat'], filtering_cond=None, param=None, param_type=None):
+def calc_responsiveness2(ep, 
+                         nROIs, 
+                         alpha=0.05, 
+                         t_window = 1.0, 
+                         repetition_keys = ['repeat'], 
+                         filtering_cond=None, 
+                         param=None, 
+                         param_type=None, 
+                         quantity = 'dFoF'):
 
     '''
     Calculates the responsiveness of each ROI in an episode, calculating for each combination of parameters given
@@ -63,7 +71,7 @@ def calc_responsiveness2(ep, nROIs, alpha=0.05, t_window = 1.0, repetition_keys 
 
         roi_summary_data = pre_post_statistics(ep,
                                                episode_cond= cond,
-                                               response_args = dict(index=roi_n),
+                                               response_args = dict(index=roi_n, quantity=quantity),
                                                response_significance_threshold=alpha,
                                                stat_test_props=stat_test_props,
                                                repetition_keys=repetition_keys)

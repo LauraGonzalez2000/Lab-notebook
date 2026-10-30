@@ -131,18 +131,24 @@ def plot_traces(Ep,
         if traces=='raw_fluo':
             trace = Ep.rawFluo.mean(axis=1)
             neuropil = Ep.neuropil.mean(axis=1)
+        if traces=='Zscore_correctedFluo':
+            trace = Ep.Zscore_correctedFluo.mean(axis=1)
     elif np.isscalar(roi):
         if traces=='dFoF':
             trace = Ep.dFoF[:, roi, :]
         if traces=='raw_fluo':
             trace = Ep.rawFluo[:, roi, :]
             neuropil = Ep.neuropil[:, roi, :]
+        if traces=='Zscore_correctedFluo':
+            trace = Ep.Zscore_correctedFluo[:, roi, :]
     else:
         if traces=='dFoF':
             trace = Ep.dFoF[:, roi, :].mean(axis=1)
         if traces=='raw_fluo':
             trace = Ep.rawFluo[:, roi, :].mean(axis=1)
             neuropil = Ep.neuropil[:, roi, :].mean(axis=1)
+        if traces=='Zscore_correctedFluo':
+                    trace = Ep.Zscore_correctedFluo[:, roi, :].mean(axis=1)
 
     # Baseline subtraction
     baseline = Ep.t < 0
@@ -282,6 +288,13 @@ def plot_traces(Ep,
                             ha='left',
                             color='seagreen')
 
+    if traces == 'Zscore_correctedFluo':
+            pt.annotate(last_ax,
+                        'Zscore(correctedFluo)',
+                                (-1, 1),
+                                ha='left',
+                                color='seagreen')
+
     pt.draw_bar_scales(first_ax,
                         Xbar=1,
                         Xbar_label='1s', 
@@ -336,7 +349,12 @@ def find_EP_LED_on_off(Ep, OPTO_THRESHOLD = 0.05 ):
     '''
     return LED_on, LED_off
 
-def plot_variation_dFoF(Ep, average_by='stimulus', roi=None, LED_on = [], color_led='lightskyblue'):
+def plot_variation_dFoF(Ep, 
+                        average_by='stimulus', 
+                        roi=None, 
+                        LED_on = [], 
+                        color_led='lightskyblue', 
+                        trace = 'dFoF'):
     
     keys = list(Ep.varied_parameters.keys())
     n_keys = len(keys)
@@ -357,12 +375,22 @@ def plot_variation_dFoF(Ep, average_by='stimulus', roi=None, LED_on = [], color_
     fig, ax = pt.figure(ax_scale=(0.9, 0.95), axes=(n_cols, n_rows),
                             wspace=0.7, hspace=1.0, top=2)
 
+    #change names to make it more readable (I'm using 'dFoF' when it's not )
     if roi is None:
-        dFoF = Ep.dFoF.mean(axis=1)
+        if trace == 'dFoF':
+            dFoF = Ep.dFoF.mean(axis=1)
+        elif trace == 'Zscore_correctedFluo':
+            dFoF = Ep.Zscore_correctedFluo.mean(axis=1)
     elif np.isscalar(roi):
-        dFoF = Ep.dFoF[:, roi, :]
+        if trace == 'dFoF':
+            dFoF = Ep.dFoF[:, roi, :]
+        elif trace == 'Zscore_correctedFluo':
+            dFoF = Ep.Zscore_correctedFluo[:, roi, :]
     else:
-        dFoF = Ep.dFoF[:, roi, :].mean(axis=1)
+        if trace == 'dFoF':
+            dFoF = Ep.dFoF[:, roi, :].mean(axis=1)
+        elif trace == 'Zscore_correctedFluo':
+            dFoF = Ep.Zscore_correctedFluo[:, roi, :].mean(axis=1)
 
     #baseline blank vs baseline opto
     if Ep.protocol_name == 'protocol-grey-screen':
@@ -454,9 +482,9 @@ base = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'vision-s
 
 ###################################################################################
 #ArchT on NDNF and GCaMP on PYR
-#datafolder = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs')
-path = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-15-41-49.nwb')
-#path = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-16-16-41.nwb')
+datafolder = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs')
+#path = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-15-41-49.nwb')
+path = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-16-16-41.nwb')
 #issue with file
 #path = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_08_31-13-30-18.nwb')
 #path = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_08_31-15-35-23.nwb')
@@ -465,7 +493,7 @@ path = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-15-41-49.nwb')
 #%%
 #organised by LED intensity
 
-base = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'vision-survey-opto')
+#base = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'vision-survey-opto')
 #LED M450LP2 -> 450 nm (blue)
 #700mA
 #path = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-14-41-06.nwb')
@@ -489,17 +517,17 @@ base = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'vision-s
 #900mA
 #path = os.path.join(base,'NDNF-Cre','NWBs', '2026_08_27-14-28-15.nwb')
 #1000mA
-path = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-16-16-41.nwb')
+#path = os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-16-16-41.nwb')
 
-paths = [os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-14-41-06.nwb'),
-         os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_09_02-11-56-52.nwb'),
-         os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_08_26-15-34-27.nwb'),
-         os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-11-38-44.nwb'),
-         os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_05-16-58-19.nwb'),
-         os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-14-01-46.nwb'),
-         os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-15-41-49.nwb'),
-         os.path.join(base,'NDNF-Cre','NWBs', '2026_08_27-14-28-15.nwb'),
-         os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-16-16-41.nwb')]
+paths = [#os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-14-41-06.nwb'),
+         #os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_09_02-11-56-52.nwb')]#,
+         #os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_08_26-15-34-27.nwb'),
+         #os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-11-38-44.nwb'),
+         #os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_05-16-58-19.nwb'),
+         #os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-14-01-46.nwb'),
+         #os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-15-41-49.nwb'),
+         #os.path.join(base,'NDNF-Cre','NWBs', '2026_08_27-14-28-15.nwb'),
+         #os.path.join(base,'Thy1GCaMP-NDNF-Cre','NWBs', '2026_10_06-16-16-41.nwb')]
 
 
 
@@ -517,17 +545,18 @@ for index in range(100):
 
 #%% 
 #base = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'vision-survey-opto')
-
 #control animal with no opsin (3 animals)
 #path = os.path.join(base,'C57BL6J','NWBs', '2026_10_02-17-18-59.nwb')
 #path = os.path.join(base,'C57BL6J','NWBs', '2026_10_01-14-07-58.nwb')
 #path = os.path.join(base,'C57BL6J','NWBs', '2026_10_01-15-04-50.nwb')
-
+#%%
 #for path in paths: 
 data = Data(path)
 data.build_rawFluo()
 data.build_neuropil()
-data.build_dFoF(neuropil_correction_factor=0)
+data.build_correctedFluo(neuropil_correction_factor=1,verbose=True)
+data.build_Zscore(quantity='correctedFluo')
+data.build_dFoF(neuropil_correction_factor = 0)
 data.build_visual_stim()
 
 #[0 - center patch - 'protocol-center-patch' 
@@ -539,26 +568,93 @@ protocol_id = 0
 protocol_name= "static-patch"
 color = 'greenyellow'
 #color = 'lightskyblue'
+
+#%% MEAN ALL ROIS
+'''
+#Average all ROIs
 Ep = EpisodeData(data, protocol_id=protocol_id, 
-                quantities=['dFoF','rawFluo', 'neuropil','opto'], 
+                quantities=['dFoF','rawFluo', 'neuropil','opto', "Zscore_correctedFluo"], 
                 prestim_duration=2,
                 verbose=True)
-
-#Average all ROIs
 _ = plot_traces(Ep,
-            title='%s,\nmean over all ROIs\n %s' % (data.filename, protocol_name), 
+            title='%s,\nmean over all valid ROIs (%s)\n %s' % (data.filename, data.nROIs, protocol_name), 
             average_by = "stimulus", LED_on = [],#opto_for_protocol,
             traces='raw_fluo', 
             color_led=color)
 
 _ = plot_traces(Ep,
-            title='%s,\nmean over all ROIs\n %s' % (data.filename, protocol_name), 
+            title='%s,\nmean over all valid ROIs (%s)\n %s' % (data.filename, data.nROIs, protocol_name), 
+            average_by = "stimulus", LED_on = [],#opto_for_protocol,
+            traces='Zscore_correctedFluo',
+            color_led=color)
+plot_variation_dFoF(Ep, color_led=color, trace='Zscore_correctedFluo')
+
+_ = plot_traces(Ep,
+            title='%s,\nmean over all valid ROIs (%s)\n %s' % (data.filename, data.nROIs, protocol_name), 
             average_by = "stimulus", LED_on = [],#opto_for_protocol,
             traces='dFoF',
             color_led=color)
+plot_variation_dFoF(Ep, color_led=color)
 
+data.build_dFoF(neuropil_correction_factor = 0.7)
+Ep = EpisodeData(data, protocol_id=protocol_id, 
+                quantities=['dFoF','rawFluo', 'neuropil','opto', "Zscore_correctedFluo"], 
+                prestim_duration=2,
+                verbose=True)
+_ = plot_traces(Ep,
+            title='%s,\nmean over all valid ROIs (%s)\n %s' % (data.filename, data.nROIs, protocol_name), 
+            average_by = "stimulus", LED_on = [],#opto_for_protocol,
+            traces='dFoF',
+            color_led=color)
+plot_variation_dFoF(Ep, color_led=color)
+
+data.build_dFoF(neuropil_correction_factor = 1)
+Ep = EpisodeData(data, protocol_id=protocol_id, 
+                quantities=['dFoF','rawFluo', 'neuropil','opto', "Zscore_correctedFluo"], 
+                prestim_duration=2,
+                verbose=True)
+_ = plot_traces(Ep,
+            title='%s,\nmean over all valid ROIs (%s)\n %s' % (data.filename, data.nROIs, protocol_name), 
+            average_by = "stimulus", LED_on = [],#opto_for_protocol,
+            traces='dFoF',
+            color_led=color)
 plot_variation_dFoF(Ep, color_led=color)
 '''
+#%% RESPONSIVE ROIS
+Ep = EpisodeData(data, protocol_id=protocol_id, 
+                quantities=['dFoF','rawFluo', 'neuropil','opto', "Zscore_correctedFluo"], 
+                prestim_duration=2,
+                verbose=True)
+# select responsive ROIs with "Zscore_correctedFluo"
+resp_roi, pos_roi, neg_roi = calc_responsiveness2(Ep, 
+                                                data.nROIs, 
+                                                alpha=0.05, 
+                                                t_window = 1.0, 
+                                                repetition_keys = ['repeat', 'contrast', 'radius'], 
+                                                filtering_cond=None, 
+                                                param=None, 
+                                                param_type=None,
+                                                quantity = "Zscore_correctedFluo")
+resp_roi_indexes = np.where(resp_roi)[0]
+print(resp_roi_indexes)
+random.seed(42)
+
+_ = plot_traces(Ep,
+            roi=resp_roi_indexes, 
+            title='%s,\n mean over resp ROIs (%s/%s)\n %s' % (data.filename, len(resp_roi_indexes),data.nROIs,protocol_name), 
+            average_by = "stimulus", LED_on = [],#opto_for_protocol,
+            traces='raw_fluo', 
+            color_led=color)
+
+_ = plot_traces(Ep,
+            roi=resp_roi_indexes, 
+            title='%s,\n mean over resp ROIs (%s/%s)\n %s' % (data.filename, len(resp_roi_indexes),data.nROIs,protocol_name), 
+            average_by = "stimulus", LED_on = [],#opto_for_protocol,
+            traces='Zscore_correctedFluo',
+            color_led=color)
+
+plot_variation_dFoF(Ep, color_led=color, trace='Zscore_correctedFluo')
+
 # select responsive ROIs
 resp_roi, pos_roi, neg_roi = calc_responsiveness2(Ep, 
                                                 data.nROIs, 
@@ -567,7 +663,8 @@ resp_roi, pos_roi, neg_roi = calc_responsiveness2(Ep,
                                                 repetition_keys = ['repeat', 'contrast', 'radius'], 
                                                 filtering_cond=None, 
                                                 param=None, 
-                                                param_type=None)
+                                                param_type=None,
+                                                quantity = "dFoF")
 resp_roi_indexes = np.where(resp_roi)[0]
 print(resp_roi_indexes)
 random.seed(42)
@@ -580,7 +677,62 @@ _ = plot_traces(Ep,
 plot_variation_dFoF(Ep, 
                     roi=resp_roi_indexes,
                     color_led=color)
-'''
+
+
+data.build_dFoF(neuropil_correction_factor = 0.7)
+Ep = EpisodeData(data, protocol_id=protocol_id, 
+                quantities=['dFoF','rawFluo', 'neuropil','opto', "Zscore_correctedFluo"], 
+                prestim_duration=2,
+                verbose=True)
+resp_roi, pos_roi, neg_roi = calc_responsiveness2(Ep, 
+                                data.nROIs, 
+                                alpha=0.05, 
+                                t_window = 1.0, 
+                                repetition_keys = ['repeat', 'contrast', 'radius'], 
+                                filtering_cond=None, 
+                                param=None, 
+                                param_type=None)
+resp_roi_indexes = np.where(resp_roi)[0]
+print(resp_roi_indexes)
+random.seed(42)
+_ = plot_traces(Ep,
+            roi=resp_roi_indexes,       
+            title='%s,\n mean over resp ROIs (%s/%s)\n %s' % (data.filename, len(resp_roi_indexes),data.nROIs,protocol_name), 
+            average_by = 'stimulus', 
+            color_led=color)
+
+plot_variation_dFoF(Ep, 
+                    roi=resp_roi_indexes,
+                    color_led=color)
+
+data.build_dFoF(neuropil_correction_factor = 1)
+Ep = EpisodeData(data, protocol_id=protocol_id, 
+                quantities=['dFoF','rawFluo', 'neuropil','opto', "Zscore_correctedFluo"], 
+                prestim_duration=2,
+                verbose=True)
+resp_roi, pos_roi, neg_roi = calc_responsiveness2(Ep, 
+                                data.nROIs, 
+                                alpha=0.05, 
+                                t_window = 1.0, 
+                                repetition_keys = ['repeat', 'contrast', 'radius'], 
+                                filtering_cond=None, 
+                                param=None, 
+                                param_type=None,
+                                quantity = "dFoF")
+resp_roi_indexes = np.where(resp_roi)[0]
+print(resp_roi_indexes)
+random.seed(42)
+_ = plot_traces(Ep,
+            roi=resp_roi_indexes,       
+            title='%s,\n mean over resp ROIs (%s/%s)\n %s' % (data.filename, len(resp_roi_indexes),data.nROIs,protocol_name), 
+            average_by = 'stimulus', 
+            color_led=color)
+
+plot_variation_dFoF(Ep, 
+                    roi=resp_roi_indexes,
+                    color_led=color)
+
+
 
 ''' #plot only few rois
 # select responsive ROIs
@@ -731,7 +883,7 @@ _ = plot_traces(Ep,
 #%%
 #all files
 fig, ax = pt.figure(ax_scale=(1.2,1.2))
-for i, f in enumerate(DATASET['files']):
+for i, f in enumerate(datafolder):
     print(f)
     data = Data(f)
     data.build_neuropil()
