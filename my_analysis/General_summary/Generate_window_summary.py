@@ -9,6 +9,7 @@ import numpy as np
 sys.path += ['../../physion/src'] # add src code directory for physion
 import physion.utils.plot_tools as pt
 from physion.intrinsic.tools import *
+
 from physion.intrinsic.analysis import RetinotopicMapping
 from physion.intrinsic import tools as intrinsic_analysis
 
@@ -19,16 +20,18 @@ from PDF_layout import PDF4
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.backends.backend_pdf import PdfPages
 import pandas as pd
+from pathlib import Path
 
 #%%
 def figure_to_array(fig):
             """Convert a matplotlib Figure to a NumPy array"""
             canvas = FigureCanvas(fig)
             canvas.draw()
-            buf = canvas.tostring_rgb()
-            ncols, nrows = fig.canvas.get_width_height()
-            fig_arr = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 3)
-            return fig_arr
+            buf = np.asarray(canvas.buffer_rgba())[..., :3] 
+            #buf = canvas.tostring_rgb()
+            #ncols, nrows = fig.canvas.get_width_height()
+            #fig_arr = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 3)
+            return buf #fig_arr
 
 def generate_figures(dataFolder, segmentation_params):
     # fig 1 :vasculature picture
@@ -148,8 +151,9 @@ def create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, segmen
 ######################################################################################################
 
 #%%
-base_folder = os.path.join(os.path.expanduser('~'),'DATA', 'In_Vivo_experiments', 'NDNF-Cre-batch3','Processed', 'intrinsic_img', '2026_01_16')
-
+#base_folder = os.path.join(os.path.expanduser('~'),'DATA', 'In_Vivo_experiments', 'Ori-contrasts','NDNF-Cre','Processed', 'intrinsic_img','2026_03_10')
+base_folder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'Thy1GCaMP-NDNF-Cre','Processed', 'intrinsic_img', '2026_08_26', '16-37-45')
+#%%
 '''
 segmentation_params={'phaseMapFilterSigma': 8.,
                         'signMapFilterSigma': 12.,
@@ -211,7 +215,7 @@ for subfolder in sorted(os.listdir(base_folder)):
 
     print(f"Processing file: {datafile}")
 
-    df = pd.read_excel(os.path.join(os.path.expanduser('~'),'DATA', 'In_Vivo_experiments', 'NDNF-Cre-batch2', "DataTable.xlsx"))
+    df = pd.read_excel(os.path.join(os.path.expanduser('~'),'DATA', 'In_Vivo_experiments','Ori-contrasts', 'NDNF-Cre', "DataTable.xlsx"))
     recordings_per_subject_t = (df.groupby('subject')['time'].apply(list).to_dict())
     recordings_per_subject_d = (df.groupby('subject')['day'].apply(list).to_dict())
     recordings_t = recordings_per_subject_t.get(subject, [])

@@ -5,7 +5,7 @@
 import os, sys
 import numpy as np
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.utils import plot_tools as pt
 from physion.analysis.episodes.build import EpisodeData
 from physion.analysis.episodes.trial_statistics import pre_post_statistics
@@ -15,15 +15,20 @@ from physion.dataviz.raw import plot as plot_raw
 from scipy import stats
 base_path = os.path.join(os.path.expanduser('~'), 'Desktop', 'NWBs')
 import random
+
+sys.path += ['../']
 from PDF_layout import PDF, PDF2, PDF3, PDF3_
 from matplotlib.backends.backend_pdf import PdfPages
 
 from utils_.General_overview_episodes import plot_dFoF_per_protocol, plot_dFoF_per_protocol2
+from utils_.Responsiveness_methods import plot_responsiveness_per_protocol, plot_responsiveness2_per_protocol
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import random
 import time
 
+from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
+from pathlib import Path
 
 #%%
 #######################################################################################################
@@ -31,23 +36,23 @@ import time
 ####################################################################################################### 
 def find_available_settings(data, debug=False):
 
-    settings = {'Locomotion': {'fig_fraction': 1,
+    settings = {'running': {'fig_fraction': 1,
                                                    'subsampling': 1,
                                                    'color': '#1f77b4'},
-                        'FaceMotion': {'fig_fraction': 1,
+                'facemotion': {'fig_fraction': 1,
                                                    'subsampling': 1,
                                                    'color': 'purple'},
-                        'Pupil': {'fig_fraction': 2,
+                'pupil': {'fig_fraction': 2,
                                                   'subsampling': 1,
                                                   'color': '#d62728'},
-                        'CaImaging': {'fig_fraction': 10,
+                'CaImaging': {'fig_fraction': 10,
                                                    'subsampling': 1,
                                                    'subquantity': 'dF/F',
                                                    'color': '#2ca02c'}}
 
     
 
-    attributes = ['facemotion', 'pupil_diameter', 'dFoF']
+    attributes = ['facemotion', 'pupil', 'dFoF']
     
     missing = [attr for attr in attributes if not hasattr(data, attr)]  # for objects
 
@@ -57,13 +62,13 @@ def find_available_settings(data, debug=False):
         else:
             print("All attributes exist")
     
-    if missing==['pupil_diameter']:
+    if missing==['pupil']:
         if debug:
             print("only pupil diameter missing")
-        settings = {'Locomotion': {'fig_fraction': 1,
+        settings = {'running': {'fig_fraction': 1,
                                                    'subsampling': 1,
                                                    'color': '#1f77b4'},
-                        'FaceMotion': {'fig_fraction': 1,
+                        'facemotion': {'fig_fraction': 1,
                                                    'subsampling': 1,
                                                    'color': 'purple'},
                         'CaImaging': {'fig_fraction': 10,
@@ -74,10 +79,10 @@ def find_available_settings(data, debug=False):
     if missing==['facemotion']:
         if debug:
             print("only pupil diameter missing")
-        settings = {'Locomotion': {'fig_fraction': 1,
+        settings = {'running': {'fig_fraction': 1,
                                                'subsampling': 1,
                                                'color': '#1f77b4'},
-                        'Pupil': {'fig_fraction': 2,
+                        'pupil': {'fig_fraction': 2,
                                           'subsampling': 1,
                                           'color': '#d62728'},
                         'CaImaging': {'fig_fraction': 10,
@@ -88,21 +93,21 @@ def find_available_settings(data, debug=False):
     if missing==['dFoF']:
         if debug:
             print("only Ca imaging missing")
-        settings = {'Locomotion': {'fig_fraction': 1,
+        settings = {'running': {'fig_fraction': 1,
                                                'subsampling': 1,
                                                'color': '#1f77b4'},
-                    'FaceMotion': {'fig_fraction': 1,
+                    'facemotion': {'fig_fraction': 1,
                                                    'subsampling': 1,
                                                    'color': 'purple'},
-                    'Pupil': {'fig_fraction': 2,
+                    'pupil': {'fig_fraction': 2,
                                           'subsampling': 1,
                                           'color': '#d62728'}}
                         
     
-    if missing==['facemotion', 'pupil_diameter']:
+    if missing==['facemotion', 'pupil']:
         if debug:
             print('facemotion and pupil diameter missing')
-        settings = {'Locomotion': {'fig_fraction': 1,
+        settings = {'running': {'fig_fraction': 1,
                                                'subsampling': 1,
                                                'color': '#1f77b4'},
                     'CaImaging': {'fig_fraction': 10,
@@ -120,111 +125,6 @@ def figure_to_array(fig):
             ncols, nrows = fig.canvas.get_width_height()
             fig_arr = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 3)
             return fig_arr
-
-def calc_responsiveness(ep, nROIs):
-    session_summary = {'significant':[], 'value':[]}
-
-    for roi_n in range(nROIs):
-
-        t0 = max([0, ep.time_duration[0]-1.5])
-        stat_test_props = dict(interval_pre=[-1.5,0],                                   
-                                interval_post=[t0, t0+1.5],                                   
-                                test='ttest', 
-                                sign='both')
-        
-        roi_summary_data = pre_post_statistics(ep,
-                                               episode_cond = ep.find_episode_cond(),
-                                               response_args = dict(roiIndex=roi_n),
-                                               response_significance_threshold=0.05,
-                                               stat_test_props=stat_test_props,
-                                               repetition_keys=list(ep.varied_parameters.keys()))
-        
-        #roi_summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-        #                                           #exclude_keys=['repeat'],
-        #                                           exclude_keys= list(ep.varied_parameters.keys()), # we merge different stimulus properties as repetitions of the stim. type  
-        #                                           response_significance_threshold=0.05,
-        #                                           response_args=dict(roiIndex=roi_n))
-        
-        session_summary['significant'].append(bool(roi_summary_data['significant']))
-        session_summary['value'].append(roi_summary_data['value'])
-
-    resp_cond = np.array(session_summary['significant'])                  
-    pos_cond = resp_cond & ([session_summary['value'][i]>0 for i in range(len(session_summary['value']))])
-    neg_cond = resp_cond & ([session_summary['value'][i]<0 for i in range(len(session_summary['value']))])
-
-    print(f'{sum(resp_cond)} significant ROI ({np.sum(pos_cond)} positive, {np.sum(neg_cond)} negative) out of {len(session_summary['significant'])} ROIs')
-
-    resp_cond, pos_cond, neg_cond
-
-def plot_responsiveness_per_protocol(ep, nROIs, AX, idx, p):
-    
-    session_summary = {'significant':[], 'value':[]}
-
-    for roi_n in range(nROIs):
-
-        t0 = max([0, ep.time_duration[0]-1.5])
-
-        stat_test_props = dict(interval_pre=[-1.5,0],                                   
-                                interval_post=[t0, t0+1.5],                                   
-                                test='ttest', 
-                                sign='both')
-
-
-        #roi_summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-        #                                           exclude_keys=['repeat'],
-        #                                           #exclude_keys= list(ep.varied_parameters.keys()), # we merge different stimulus properties as repetitions of the stim. type  
-        #                                           response_significance_threshold=0.05,
-        #                                           response_args=dict(roiIndex=roi_n))
-        
-        #print("roi summary data1 : ", roi_summary_data)
-
-        roi_summary_data = pre_post_statistics(ep,
-                                               episode_cond = ep.find_episode_cond(),
-                                               response_args = dict(roiIndex=roi_n),
-                                               response_significance_threshold=0.05,
-                                               stat_test_props=stat_test_props,
-                                               repetition_keys=list(ep.varied_parameters.keys()))
-        
-        #roi_summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-        #                                           #exclude_keys=['repeat'],
-        #                                           exclude_keys= list(ep.varied_parameters.keys()), # we merge different stimulus properties as repetitions of the stim. type  
-        #                                           response_significance_threshold=0.05,
-        #                                           response_args=dict(roiIndex=roi_n))
-        
-        #print("significant : ", bool(roi_summary_data['significant'][0]))
-    
-        session_summary['significant'].append(bool(roi_summary_data['significant']))
-        session_summary['value'].append(roi_summary_data['value'])
-
-    resp_cond = np.array(session_summary['significant'])
-    #print('resp cond pie plots :\n', resp_cond)
-    #print('n responsive : ', sum(resp_cond))
-
-    #print('pos sign :\n', ([session_summary['value'][i]>0 for i in range(len(session_summary['value']))]))
-    #print('neg sign :\n', ([session_summary['value'][i]<0 for i in range(len(session_summary['value']))]))
-
-                            
-    pos_cond = resp_cond & ([session_summary['value'][i]>0 for i in range(len(session_summary['value']))])
-    neg_cond = resp_cond & ([session_summary['value'][i]<0 for i in range(len(session_summary['value']))])
-
-    print(f'Protocol {p} : {sum(resp_cond)} significant ROI ({np.sum(pos_cond)} positive, {np.sum(neg_cond)} negative) out of {len(session_summary['significant'])} ROIs')
-
-    pos_frac = np.sum(pos_cond)/nROIs
-    neg_frac = np.sum(neg_cond)/nROIs
-    ns_frac = 1-pos_frac-neg_frac
-
-    colors = ['green', 'red', 'grey']
-
-    pt.pie(data=[pos_frac, neg_frac, ns_frac], ax = AX[idx], COLORS = colors)#, pie_labels = ['%.1f%%' % (100*pos),'%.1f%%' % (100*neg), '%.1f%%' % (100*ns)] )
-    
-    AX[idx].set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
-    pt.annotate(AX[idx], '+ resp=%.1f%% ' % (100*pos_frac), (1, 0), ha='right', va='top')
-    #pt.annotate(AX[idx], f'{np.sum(pos_cond)}', (1.2, 0), ha='right', va='top')
-    #pt.annotate(AX[idx], f'{np.sum(neg_cond)}', (1.6, 0), ha='right', va='top')
-    pt.annotate(AX[idx], '- resp=%.1f%%' % (100*neg_frac), (1, -0.2), ha='right', va='top')
-
-    pt.annotate(AX[0], f'{nROIs} ROIs', (1, -0.4), ha='right', va='top')
-    return 0
 
 def plot_barplot_per_protocol(ep, AX, idx, p, subplots_n):
         
@@ -258,7 +158,7 @@ def plot_barplot_per_protocol(ep, AX, idx, p, subplots_n):
     x = np.arange(target_len) #generalize
     AX[idx].bar(x, mean_vals, alpha=0.8, capsize=4)
     AX[idx].set_xticks(x)
-    AX[idx].set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
+    AX[idx].set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}")
     AX[idx].axhline(0, color='black', linewidth=0.8)
 
     if idx==0:
@@ -377,7 +277,7 @@ def generate_figures(data_s, cell_type='nan', subplots_n=9, data_type = 'Sofia')
                 fig2, _ = plot_raw(data, 
                                     tlim=[0, data.t_dFoF[-1]], 
                                     settings=settings, 
-                                    figsize=(9,3),
+                                    #figsize=(9,3),
                                     zoom_area=[((2/20)*data.t_dFoF[-1], (3/20)*data.t_dFoF[-1]),
                                                 ((15/20)*data.t_dFoF[-1], (16/20)*data.t_dFoF[-1])],
                                     grey=True, 
@@ -388,15 +288,15 @@ def generate_figures(data_s, cell_type='nan', subplots_n=9, data_type = 'Sofia')
                 fig2, _ = plot_raw(data, 
                                     tlim=[0, data.t_dFoF[-1]], 
                                     settings=settings, 
-                                    figsize=(9,3),
+                                    #figsize=(9,3),
                                     zoom_area=[((2/20)*data.t_dFoF[-1], (3/20)*data.t_dFoF[-1]),
                                                 ((15/20)*data.t_dFoF[-1], (16/20)*data.t_dFoF[-1])])
             
             fig3, _ = plot_raw(data, tlim=[(2/20)*data.t_dFoF[-1], (3/20)*data.t_dFoF[-1]],
-                            settings=settings, figsize=(9,3))
+                            settings=settings)
             
             fig4, _ = plot_raw(data, tlim=[(15/20)*data.t_dFoF[-1], (16/20)*data.t_dFoF[-1]],
-                            settings=settings, figsize=(9,3))
+                            settings=settings)
             
               
         fig5, _ = plot_dFoF_per_protocol(data_s=[data], protocols=protocols, subplots_n=subplots_n)
@@ -449,7 +349,7 @@ def create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, 
         pdf3.fill_PDF3(fig6, fig7, fig8, fig9)
         fig_p3 = pdf3.fig
 
-        output_path = f'C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/{os.path.splitext(dict_annotation['name'])[0]}_summary.pdf'
+        output_path = f"C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/{os.path.splitext(dict_annotation['name'])[0]}_summary.pdf"
 
         with PdfPages(output_path) as pdf:
                 pdf.savefig(fig_p1, dpi=300, bbox_inches="tight")  # Page 1
@@ -461,105 +361,6 @@ def create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, 
     except Exception as e:
         print(f"Error creating the individual PDF file : {e}")
 
-    return 0
-
-def plot_responsiveness2_per_protocol(data_s, AX, idx,  p, type='means'):
-    pos_s = []
-    neg_s = []
-
-    resp_cond_s = []
-    pos_cond_s = []
-    neg_cond_s = []
-
-    for data in data_s:
-        ep = EpisodeData(data, protocol_name=p, quantities=['dFoF'])
-        
-        sig_list = []
-        val_list = []
-        nROIs = []
-
-        for roi_n in range(data.nROIs):
-
-            t0 = max([0, ep.time_duration[0]-1.5])
-            stat_test_props = dict(
-                interval_pre=[-1.5,0],
-                interval_post=[t0, t0+1.5],
-                test='ttest',
-                sign='both')
-            
-            #roi_summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-            #                                           exclude_keys=list(ep.varied_parameters.keys()),
-            #                                           response_significance_threshold=0.05,
-            #                                           response_args=dict(roiIndex=roi_n))
-            
-            roi_summary_data = pre_post_statistics(ep,
-                                               episode_cond = ep.find_episode_cond(),
-                                               response_args = dict(roiIndex=roi_n),
-                                               response_significance_threshold=0.05,
-                                               stat_test_props=stat_test_props,
-                                               repetition_keys=list(ep.varied_parameters.keys()))
-
-            print("here : ", roi_summary_data['significant'])
-            sig_list.append(bool(roi_summary_data['significant']))
-            val_list.append(roi_summary_data['value'])
-            nROIs.append(data.nROIs)
-
-        sig_arr = np.array(sig_list)
-        val_arr = np.array(val_list)
-
-        #Compute per-ROI positive/negative significance
-        resp_cond = sig_arr
-        pos_cond = sig_arr & (val_arr > 0)
-        neg_cond = sig_arr & (val_arr < 0)
-
-        resp_cond_s.append(resp_cond)
-        pos_cond_s.append(pos_cond)
-        neg_cond_s.append(neg_cond)
-
-        #Compute per-session proportions
-        pos = np.sum(pos_cond) / len(sig_arr)
-        neg = np.sum(neg_cond) / len(sig_arr)
-
-        pos_s.append(pos)
-        neg_s.append(neg)
-
-    if type== 'means':
-        final_pos = np.mean(pos_s)
-        final_neg = np.mean(neg_s)
-        final_ns = 1 - final_pos - final_neg
-        AX[0].annotate('average over %i sessions ,   mean$\\pm$SEM across sessions' % len(data_s),
-                               (1, -0.6), xycoords='axes fraction')
-        
-        sem = stats.sem([pos_s, neg_s], axis=1) 
-
-        pt.annotate(AX[idx], 'Pos= %.1f ± %.1f %%' % (100 * final_pos, 100 *sem[0]),
-                (1, 0), ha='right', va='top', fontsize=6)
-        pt.annotate(AX[idx], 'Neg= %.1f ± %.1f %%' % (100 * final_neg, 100 *sem[1]),
-                    (1, -0.2), ha='right', va='top', fontsize=6)
-        
-
-    elif type == 'ROI':
-        pos_cond_s = np.concatenate(pos_cond_s)
-        neg_cond_s = np.concatenate(neg_cond_s)
-    
-        final_pos = np.mean(pos_cond_s)
-        final_neg = np.mean(neg_cond_s)
-        final_ns = 1 - final_pos - final_neg
-        AX[0].annotate('average over %i ROIs' % np.sum(nROIs),
-                               (1, -0.6), xycoords='axes fraction')
-        
-        pt.annotate(AX[idx], 'Pos= %.1f %%' % (100 * final_pos),
-                (1, 0), ha='right', va='top', fontsize=6)
-        pt.annotate(AX[idx], 'Neg= %.1f %%' % (100 * final_neg),
-                    (1, -0.2), ha='right', va='top', fontsize=6)
-
-    print(final_pos, final_neg, final_ns)
-    pt.pie(data=[final_pos, final_neg, final_ns],
-        ax=AX[idx],
-        COLORS=['green', 'red', 'grey'])
-
-    AX[idx].set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
-    
     return 0
 
 def plot_barplot2_per_protocol(data_s, AX,idx,  p, subplots_n):
@@ -609,7 +410,7 @@ def plot_barplot2_per_protocol(data_s, AX,idx,  p, subplots_n):
         error_kw=dict(linewidth=0.6)
     )
     AX[idx].set_xticks(x)
-    AX[idx].set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
+    AX[idx].set_title(f"{p.replace('Natural-Images-4-repeats','natural-images')}")
     AX[idx].axhline(0, color='black', linewidth=0.8)
     
     if idx==0:
@@ -659,7 +460,7 @@ def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
         pdf2.fill_PDF3(fig2, fig3)
         fig_p2 = pdf2.fig
 
-        output_path = f'C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/GROUP_summary.pdf'
+        output_path = f"C:/Users/laura.gonzalez/Output_expe/In_Vivo/{cell_type}/Summary_PDF/GROUP_summary.pdf"
 
         with PdfPages(output_path) as pdf:
                 pdf.savefig(fig_p1, dpi=300, bbox_inches="tight")  # Page 1
@@ -677,6 +478,34 @@ def create_group_PDF(fig1, fig2, fig3, fig4, cell_type):
 ##################################################################################################################
 # %% [markdown]
 # # Generate final figures
+
+#%%
+#Vision survey opto
+
+#%%
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'vision-survey-opto','NDNF-Cre','NWBs')
+SESSIONS = scan_folder_for_NWBfiles(datafolder)
+SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
+
+dFoF_options = {
+        'roi_to_neuropil_fluo_inclusion_factor': 1.0,
+        'method_for_F0': 'sliding_percentile',
+        'sliding_window': 300.,
+        'percentile': 10.,
+        'neuropil_correction_factor': 0.8}
+
+data_s = []
+for idx, filename in enumerate(SESSIONS['files']):
+    data = Data(filename, verbose=False)
+    data.build_dFoF(**dFoF_options, verbose=False)
+    data.build_running()
+    data.build_facemotion()
+    data.build_pupil()
+    data_s.append(data)
+#%% [markdown]
+# ## All individual files
+#%%
+generate_figures(data_s, cell_type='NDNF-opto', subplots_n=5, data_type = 'Sofia')
 #%% [markdown]
 # ## YANN DATASET
 

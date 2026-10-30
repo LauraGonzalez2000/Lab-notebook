@@ -14,59 +14,14 @@ from physion.utils  import plot_tools as pt
 import numpy as np
 import itertools
 import matplotlib.pyplot as plt
+from physion.analysis.episodes.trial_statistics import pre_post_statistics
 
-# %% [markdown]
-# ## Load data
-
-# %%
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments', 'NDNF-Cre-batch1','NWBs')
-SESSIONS = scan_folder_for_NWBfiles(datafolder)
-SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
-
-#%%
-dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
-                 'method_for_F0' : 'sliding_percentile', # either 'minimum', 'percentile', 'sliding_minimum', or 'sliding_percentile'
-                 'sliding_window' : 300. , # seconds (used only if METHOD= 'sliding_minimum' | 'sliding_percentile')
-                 'percentile' : 10. , # for baseline (used only if METHOD= 'percentile' | 'sliding_percentile')
-                 'neuropil_correction_factor' : 0.8 }# fraction of neuropil substracted to fluorescence
-
-coord_map = {
-            (np.float64(-36.0), np.float64(-23.0)): (2, 0),
-            (np.float64(-36.0), np.float64(0.0)):   (2, 1),
-            (np.float64(-36.0), np.float64(23.0)):  (2, 2),
-            (np.float64(0.0), np.float64(-23.0)):   (1, 0),
-            (np.float64(0.0), np.float64(0.0)):     (1, 1),
-            (np.float64(0.0), np.float64(23.0)):    (1, 2),
-            (np.float64(36.0), np.float64(-23.0)):  (0, 0),
-            (np.float64(36.0), np.float64(0.0)):    (0, 1),
-            (np.float64(36.0), np.float64(23.0)):   (0, 2),
-        }
-
-#%%
-filename = SESSIONS['files'][0]
-data = Data(filename,
-                verbose=False)
-
-data.build_dFoF(**dFoF_options, verbose=False)
-data.build_pupil_diameter()
-data.build_running_speed()
-
-quantities = ['dFoF']
-protocol = "quick-spatial-mapping"
-ep = EpisodeData(data, 
-                quantities = quantities, 
-                protocol_name = protocol, 
-                verbose=False)
-
-varied_keys = [k for k in ep.varied_parameters.keys() if k!='repeat']
-varied_values = [ep.varied_parameters[k] for k in varied_keys]
-print(varied_keys)
-print(varied_values)
-
-#%% plot quick spatial mapping
 from scipy import stats
-def plot_qsm(index, coord_map, diffs):
-    filename = SESSIONS['files'][index]
+
+#%%
+#functions
+def plot_qsm(files, index, coord_map, diffs):
+    filename = files[index]
     data = Data(filename,
                 verbose=False)
 
@@ -96,7 +51,11 @@ def plot_qsm(index, coord_map, diffs):
         
 
     #quantification to rank 
-    summary = ep.compute_summary_data(stat_test_props={})
+    summary = pre_post_statistics(ep, 
+                                  episode_cond = ep.find_episode_cond(),
+                                  response_args = {}, 
+                                  nMin_episodes=2)
+    
     center_cond = (summary['x-center']==0) & (summary['y-center']==0)
     center_value = summary['value'][center_cond]
     center_resp = summary['significant'][center_cond]
@@ -113,54 +72,92 @@ def plot_qsm(index, coord_map, diffs):
     save_path = os.path.join(outdir, f"{name}_qsm.png")
     fig.savefig(save_path, dpi=300, bbox_inches="tight")
 
+
     return 0
 
-diffs = []
-plot_qsm(5, coord_map, diffs)
+# %% [markdown]
+# ## Load data
 
 # %%
+#datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments', 'Vision-survey','NDNF-Cre','NWBs')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments', 'Quick-spatial-mapping','NWBs')
+SESSIONS = scan_folder_for_NWBfiles(datafolder)
+SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
-summary = ep.compute_summary_data(stat_test_props={})
-center_cond = (summary['x-center']==0) & (summary['y-center']==0)
-center_value = summary['value'][center_cond]
-around_value = summary['value'][~center_cond].mean()
-diff_value = center_value-around_value
-
-center_resp = summary['significant'][center_cond]
-
-print("center value : ",center_value)
-print("center significant : ", center_resp)
-print("mean value around : ",around_value)
-print("difference center - around : ",diff_value)
 #%%
-plot_qsm(index=0, coord_map=coord_map, diffs=diffs)
+dFoF_options = {'roi_to_neuropil_fluo_inclusion_factor' : 1.0, # ratio to discard ROIs with weak fluo compared to neuropil
+                 'method_for_F0' : 'sliding_percentile', # either 'minimum', 'percentile', 'sliding_minimum', or 'sliding_percentile'
+                 'sliding_window' : 200. , # seconds (used only if METHOD= 'sliding_minimum' | 'sliding_percentile')
+                 'percentile' : 10. , # for baseline (used only if METHOD= 'percentile' | 'sliding_percentile')
+                 'neuropil_correction_factor' : 0.8 }# fraction of neuropil substracted to fluorescence
+
+coord_map = {
+            (np.float64(-36.0), np.float64(-23.0)): (2, 0),
+            (np.float64(-36.0), np.float64(0.0)):   (2, 1),
+            (np.float64(-36.0), np.float64(23.0)):  (2, 2),
+            (np.float64(0.0), np.float64(-23.0)):   (1, 0),
+            (np.float64(0.0), np.float64(0.0)):     (1, 1),
+            (np.float64(0.0), np.float64(23.0)):    (1, 2),
+            (np.float64(36.0), np.float64(-23.0)):  (0, 0),
+            (np.float64(36.0), np.float64(0.0)):    (0, 1),
+            (np.float64(36.0), np.float64(23.0)):   (0, 2),
+        }
+
 #%%
-print(SESSIONS['files'])
-print(SESSIONS['files'][0][-1])
+index = 6
+filename = SESSIONS['files'][0]
+data = Data(filename,
+            verbose=False)
+
+data.build_dFoF(**dFoF_options, verbose=False)
+data.build_pupil_diameter()
+#data.build_running_speed()
+
+quantities = ['dFoF']
+protocol = "quick-spatial-mapping"
+ep = EpisodeData(data, 
+                quantities = quantities, 
+                protocol_name = protocol, 
+                verbose=False)
+
+varied_keys = [k for k in ep.varied_parameters.keys() if k!='repeat']
+varied_values = [ep.varied_parameters[k] for k in varied_keys]
+print(varied_keys)
+print(varied_values)
+
+
+
+# plot quick spatial mapping
+plot_qsm(files = SESSIONS['files'], index=index, coord_map=coord_map, diffs=[])
 
 #%% [markdown]
-# ## Plot for all files
+###############################################################################
+#### Plot for all files #######################################################
+###############################################################################
 #%%
 diffs = []
 for index in range(len(SESSIONS['files'])):
-    plot_qsm(index=index, coord_map=coord_map, diffs=diffs)
+    plot_qsm(files=SESSIONS['files'], index=index, coord_map=coord_map, diffs=diffs)
 
 
 # %%
 print(diffs)
-
 plt.scatter(np.arange(len(diffs)), diffs)
 
 # %% [markdown]
-# ### plot per animal
+###############################################################################
+##### plot per animal #########################################################
+###############################################################################
 #%%
+#animal_ids = ["1", "2", "3", "2", "3", 
+#              "4", "5", "6", "7", "8",
+#              "9", "10", "7", "2", "3",
+#              "4", "5", "9", "10", "10",
+#              "7", "5", "5", "2"]
 
-# Example: diffs and matching animal IDs
-animal_ids = ["1", "2", "3", "2", "3", 
-              "4", "5", "6", "7", "8",
-              "9", "10", "7", "2", "3",
-              "4", "5", "9", "10", "10",
-              "7", "5", "5", "2"]
+animal_ids = ["2", "2", "2",
+              "2", "2", "2", 
+              "2", "2", "2"]
 
 # Find unique animals
 unique_animals = np.unique(animal_ids)
@@ -192,9 +189,3 @@ plt.xticks(range(len(unique_animals)), unique_animals)
 plt.xlabel("Animal")
 plt.ylabel("Difference")
 plt.title("Differences per animal")
-
-
-def responsive_center():
-    files = []
-    
-    return files

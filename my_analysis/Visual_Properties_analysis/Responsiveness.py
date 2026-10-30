@@ -2,20 +2,23 @@
 # # Responsiveness
 
 #%%
-#why are Data created??
 import sys, os
 import numpy as np
 import matplotlib.pyplot as plt
 
 sys.path += ['../../physion/src'] # add src code directory for physion
 from physion.analysis.read_NWB import Data
+
 from physion.utils import plot_tools as pt
 from physion.analysis.read_NWB import Data, scan_folder_for_NWBfiles
 from physion.analysis.episodes.build import EpisodeData
 from physion.analysis.episodes.trial_statistics import pre_post_statistics
+from scipy import stats
+from pathlib import Path
 
 sys.path += ['..']
-from General_summary.Generate_PDF_summary_opti import plot_responsiveness2_per_protocol, plot_responsiveness_per_protocol
+from utils_.General_overview_episodes import compute_high_arousal_cond
+
 
 #%%
 ############################################################################
@@ -76,12 +79,12 @@ def study_responsiveness(SESSIONS, index, protocol):
     AX.bar(x, y, color=colors)
     AX.set_xlabel('ROI #')
     AX.set_ylabel('Responsiveness')
-    AX.set_title(f'Session #{index}')
+    AX.set_title("Session #{index}")
     print(significance)
     true_indexes = [i for i, val in enumerate(significance) if val]
     false_indexes = [i for i, val in enumerate(significance) if not val]
     print(true_indexes)
-    print(f'{len(true_indexes)} significant ROI out of {len(significance)} ROIs')
+    print(f"{len(true_indexes)} significant ROI out of {len(significance)} ROIs")
     return 0
 
 def study_responsiveness_all(SESSIONS, protocol):
@@ -152,7 +155,7 @@ def study_responsiveness_all(SESSIONS, protocol):
         AX[i][j].bar(x, y, color=Colors[rec])
         AX[i][j].set_xlabel('ROI #')
         AX[i][j].set_ylabel('Responsiveness')
-        AX[i][j].set_title(f'Session #{rec}')
+        AX[i][j].set_title(f"Session #{rec}")
 
         # ---- PIE CHART ----
         # Count responsive cells
@@ -188,67 +191,502 @@ def study_responsiveness_all(SESSIONS, protocol):
     fig.tight_layout()
     return 0
 
-def plot_responsiveness_per_protocol(ep, nROIs, AX, idx, p, Resp_ROI_dict):
+def get_num_protocols(data, protocols):
+    n_subprot_s = []
+    for protocol in protocols: 
+        data.init_visual_stim()
+        ep = EpisodeData(data, protocol_name=protocol, quantities=['dFoF', 'running_speed'])
+        ep.init_visual_stim(data)
+        variable_keys = []
+        variable_values = []
+        for k, v in ep.visual_stim.experiment.items():
+            arr = np.array(v, dtype=object)
+            arr_no_none = arr[arr != None]
+            if len(arr_no_none) > 0 and not np.all(arr_no_none == arr_no_none[0]):
+                if k != 'index' and k != 'repeat' and k!= 'interstim' and k!= 'time_start' and k!= 'time_stop':
+                    variable_keys.append(k)
+                    variable_values.append(np.unique(arr_no_none))
     
-    session_summary = {'significant':[], 'value':[]}
-
-    for roi_n in range(nROIs):
-
-        t0 = max([0, ep.time_duration[0]-1.5])
-
-        stat_test_props = dict(interval_pre=[-1.5,0],                                   
-                                interval_post=[t0, t0+1.5],                                   
-                                test='ttest', 
-                                sign='both')
-
-        #roi_summary_data = ep.compute_summary_data(stat_test_props=stat_test_props,
-        #                                           #exclude_keys=['repeat'],
-        #                                           exclude_keys= list(ep.varied_parameters.keys()), # we merge different stimulus properties as repetitions of the stim. type  
-        #                                           response_significance_threshold=0.05,
-        #                                           response_args=dict(roiIndex=roi_n))
-        roi_summary_data = pre_post_statistics(ep,
-                                           episode_cond = ep.find_episode_cond(),
-                                           response_args = dict(roiIndex=roi_n),
-                                           response_significance_threshold=0.05,
-                                           stat_test_props=stat_test_props,
-                                           repetition_keys=list(ep.varied_parameters.keys()))
-        
-        session_summary['significant'].append(bool(roi_summary_data['significant']))
-        session_summary['value'].append(roi_summary_data['value'])
-        print("roi :", roi_n, ", resp : ",  bool(roi_summary_data['significant']), ", value : ",roi_summary_data['value'], "\n")
-        if bool(roi_summary_data['significant'])==False:
-            category = 'NS'
+        if len(variable_values) > 0:
+            n_subprot_s.append(len(variable_values[0]))
         else: 
-            if roi_summary_data['value']>0:
-                category = "Positive"
-            else: 
-                category = "Negative"
+            n_subprot_s.append(1)
+    return n_subprot_s
 
-        Resp_ROI_dict[f"ROI_{roi_n}"][p] = category
+def get_fig_ax(protocols, n_subprot_s_, behavior_split, subprotocol_split):
+    if behavior_split==False: 
+        if subprotocol_split==False: 
+            fig, AX = pt.figure(axes = (len(protocols),1))
+            if not isinstance(AX, (list, np.ndarray)):
+                AX = [AX]
+        else: 
+            fig, AX = pt.figure(axes = (sum(n_subprot_s_),1))
+            if not isinstance(AX, (list, np.ndarray)):
+                AX = [AX]
+    else : 
+        if subprotocol_split==False: 
+            fig, AX = pt.figure(axes = (len(protocols)*2,1))
+        else: 
+            fig, AX = pt.figure(axes = (sum(n_subprot_s_)*2,1))
+    return fig, AX
 
-    resp_cond = np.array(session_summary['significant'])                     
-    pos_cond = resp_cond & ([session_summary['value'][i]>0 for i in range(len(session_summary['value']))])
-    neg_cond = resp_cond & ([session_summary['value'][i]<0 for i in range(len(session_summary['value']))])
-
-    print(f'Protocol {p} : {sum(resp_cond)} significant ROI ({np.sum(pos_cond)} positive, {np.sum(neg_cond)} negative) out of {len(session_summary['significant'])} ROIs')
-
-    pos_frac = np.sum(pos_cond)/nROIs
-    neg_frac = np.sum(neg_cond)/nROIs
-    ns_frac = 1-pos_frac-neg_frac
-
-    colors = ['green', 'red', 'grey']
-
-    pt.pie(data=[pos_frac, neg_frac, ns_frac], ax = AX[idx], COLORS = colors)#, pie_labels = ['%.1f%%' % (100*pos),'%.1f%%' % (100*neg), '%.1f%%' % (100*ns)] )
+def calc_values(data_s,
+                nROIs, 
+                pos_session_s, neg_session_s,
+                resp_cond_s, pos_roi_s, neg_cond_s, 
+                pos_act_s, neg_act_s,
+                resp_act_cond_s,pos_act_roi_s, neg_act_roi_s,
+                pos_rest_s, neg_rest_s,
+                resp_rest_cond_s, pos_rest_cond_s, neg_rest_cond_s, 
+                behavior_split, subprotocol_split,p):
     
-    AX[idx].set_title(f'{p.replace('Natural-Images-4-repeats','natural-images')}')
-    pt.annotate(AX[idx], '+ resp=%.1f%% ' % (100*pos_frac), (1, 0), ha='right', va='top')
-    pt.annotate(AX[idx], '- resp=%.1f%%' % (100*neg_frac), (1, -0.2), ha='right', va='top')
-    pt.annotate(AX[0], f'{nROIs} ROIs', (1, -0.4), ha='right', va='top')
+    for data in data_s:
+
+            nROIs.append(data.nROIs)
+            ep = EpisodeData(data, 
+                             protocol_name=p, 
+                             quantities=['dFoF', 'running_speed'])
+            HMcond = np.array(compute_high_arousal_cond(ep, 
+                             pre_stim=1, 
+                             running_speed_threshold=0.1, 
+                             metric="locomotion"))
+
+            sig_list = []
+            val_list = []
+            sig_list_act = []
+            val_list_act = []
+            sig_list_rest = []
+            val_list_rest = []
+            
+            for roi_n in range(data.nROIs):
+
+                t0 = max([0, ep.time_duration[0]-1.5])
+                stat_test_props = dict(
+                    interval_pre=[-1.5,0],
+                    interval_post=[t0, t0+1.5],
+                    test='ttest',
+                    sign='both')
+                
+                if subprotocol_split:
+                    repetition_keys = ['repeat']
+                else: 
+                    repetition_keys = list(ep.varied_parameters.keys())
+
+                if behavior_split== False : 
+                    roi_summary_data = pre_post_statistics(ep,
+                                            episode_cond = ep.find_episode_cond(),
+                                            response_args = dict(roiIndex=roi_n, 
+                                                                 quantity='dFoF'),
+                                            response_significance_threshold=0.05,
+                                            stat_test_props=stat_test_props,
+                                            repetition_keys=repetition_keys, 
+                                            nMin_episodes=5)
+                    
+                    sig_list.append(roi_summary_data['significant'])
+                    val_list.append(roi_summary_data['value'])
+                    
+                
+                elif behavior_split==True : 
+                    #run
+                    if np.any(HMcond): #only if there are episodes with act condition
+                        roi_summary_data_act = pre_post_statistics(ep,
+                                                    episode_cond = HMcond,
+                                                    response_args = dict(roiIndex=roi_n,
+                                                                         quantity='dFoF'),
+                                                    response_significance_threshold=0.05,
+                                                    stat_test_props=stat_test_props,
+                                                    repetition_keys=repetition_keys,
+                                                    nMin_episodes=5)
+                        sig_list_act.append(roi_summary_data_act['significant'])
+                        val_list_act.append(roi_summary_data_act['value'])
+                    
+                    #rest
+                    if np.any(~HMcond): #only if there are episodes with rest condition
+                        roi_summary_data_rest = pre_post_statistics(ep,
+                                                    episode_cond = ~HMcond,
+                                                    response_args = dict(roiIndex=roi_n, 
+                                                                         quantity='dFoF'),
+                                                    response_significance_threshold=0.05,
+                                                    stat_test_props=stat_test_props,
+                                                    repetition_keys=repetition_keys, 
+                                                    nMin_episodes=5)
+                        sig_list_rest.append(roi_summary_data_rest['significant'])
+                        val_list_rest.append(roi_summary_data_rest['value'])
+
+            ##################################################################
+            if behavior_split == False : 
+                sig_arr = np.array(sig_list)
+                val_arr = np.array(val_list)
+                #Compute per-ROI positive/negative significance
+                resp_cond_s.append(sig_arr)
+                pos_roi_s.append(sig_arr & (val_arr > 0))
+                neg_cond_s.append(sig_arr & (val_arr < 0))
+                #Compute per-session proportions
+                pos_session_s.append(np.sum(sig_arr & (val_arr > 0), axis=0) / len(sig_arr)) 
+                neg_session_s.append(np.sum(sig_arr & (val_arr < 0), axis=0) / len(sig_arr))
+
+            elif behavior_split == True : 
+                #ACTIVE #############################################
+                sig_act_arr = np.array(sig_list_act)
+                val_act_arr = np.array(val_list_act)
+                if np.any(sig_act_arr):
+                    #Compute per-ROI positive/negative significance
+                    resp_act_cond_s.append(sig_act_arr)
+                    pos_act_roi_s.append(sig_act_arr & (val_act_arr > 0))
+                    neg_act_roi_s.append(sig_act_arr & (val_act_arr < 0))
+                    #Compute per-session proportions
+                    pos_act_s.append(np.sum(sig_act_arr & (val_act_arr > 0), axis=0)\
+                                      / len(sig_act_arr))
+                    neg_act_s.append(np.sum(sig_act_arr & (val_act_arr < 0), axis=0)\
+                                      / len(sig_act_arr))
+                
+                #RESTING ###############################################
+                sig_rest_arr = np.array(sig_list_rest)
+                val_rest_arr = np.array(val_list_rest)
+                if np.any(sig_rest_arr):
+                    #Compute per-ROI positive/negative significance
+                    resp_rest_cond_s.append(sig_rest_arr)
+                    pos_rest_cond_s.append(sig_rest_arr & (val_rest_arr > 0))
+                    neg_rest_cond_s.append(sig_rest_arr & (val_rest_arr < 0))
+                    #Compute per-session proportions
+                    pos_rest_s.append(np.sum(sig_rest_arr & (val_rest_arr > 0), axis=0)\
+                                       / len(sig_rest_arr))
+                    neg_rest_s.append(np.sum(sig_rest_arr & (val_rest_arr < 0), axis=0)\
+                                       / len(sig_rest_arr))
+
     return 0
 
+def plot_values(fig, AX, idx, 
+                by_average, behavior_split, subprotocol_split, 
+                    nROIs, 
+                    pos_session_s, neg_session_s,
+                    pos_roi_s, neg_roi_s, 
+                    pos_act_session_s, neg_act_session_s,
+                    pos_act_roi_s, neg_act_roi_s,
+                    pos_rest_session_s, neg_rest_session_s,
+                    pos_rest_cond_s, neg_rest_cond_s,
+                    n_subprot_s_, colors, p):
+    
+    #PLOT ###############################################
+    if by_average == 'session':
+        #subprotocol split to do
+        if behavior_split==False:
+            final_pos = np.mean(pos_session_s)
+            final_neg = np.mean(neg_session_s)
+            final_ns = 1 - final_pos - final_neg
+            sem = stats.sem([pos_session_s, neg_session_s], axis=1) 
+            pt.annotate(AX[idx], 'Pos= %.1f ± %.1f %%' % (100 * final_pos, 100 *sem[0]),
+                    (1, 0), ha='right', va='top', fontsize=6)
+            pt.annotate(AX[idx], 'Neg= %.1f ± %.1f %%' % (100 * final_neg, 100 *sem[1]),
+                    (1, -0.2), ha='right', va='top', fontsize=6)
+           
+        elif behavior_split==True:
+            #act
+            final_act_pos = np.mean(pos_act_session_s)
+            final_act_neg = np.mean(neg_act_session_s)
+            final_act_ns = 1 - final_act_pos - final_act_neg
+            sem = stats.sem([pos_act_session_s, neg_act_session_s], axis=1)
+            pt.annotate(AX[idx*2], 'Pos= %.1f ± %.1f %%' 
+                                % (100 * final_act_pos, 100 *sem[0]),
+                                (1, 0), ha='right', va='top', fontsize=6)
+            pt.annotate(AX[idx*2], 'Neg= %.1f ± %.1f %%' 
+                                % (100 * final_act_neg, 100 *sem[1]),
+                                (1, -0.2), ha='right', va='top', fontsize=6)
+            #rest
+            final_rest_pos = np.mean(pos_rest_session_s)
+            final_rest_neg = np.mean(neg_rest_session_s)
+            final_rest_ns = 1 - final_rest_pos - final_rest_neg
+            sem = stats.sem([pos_rest_session_s, neg_rest_session_s], axis=1) 
+            pt.annotate(AX[idx*2+1], 'Pos= %.1f ± %.1f %%' 
+                                % (100 * final_rest_pos, 100 *sem[0]),
+                                (1, 0), ha='right', va='top', fontsize=6)
+            pt.annotate(AX[idx*2+1], 'Neg= %.1f ± %.1f %%' 
+                                % (100 * final_rest_neg, 100 *sem[1]),
+                                (1, -0.2), ha='right', va='top', fontsize=6)
+        
+        pt.annotate(AX[0], 'average over %i sessions\nmean$\\pm$SEM across sessions' 
+                                % len(data_s),
+                                (0, -0.6), ha='center', va='top', fontsize=8)
+            
+    elif by_average == 'ROI': #all rois together
+
+        if behavior_split==False and subprotocol_split==False:
+            
+            pos_roi_s_ = np.concatenate(pos_roi_s)
+            neg_roi_s_ = np.concatenate(neg_roi_s) 
+
+            final_pos = np.mean(pos_roi_s_, axis=0) 
+            final_neg = np.mean(neg_roi_s_, axis=0)
+            final_ns = 1 - final_pos - final_neg
+
+
+            pt.annotate(AX[idx], 'Pos= %.1f %%' % (100 * final_pos),
+                    (1, 0), ha='right', va='top', fontsize=6)
+            pt.annotate(AX[idx], 'Neg= %.1f %%' % (100 * final_neg),
+                        (1, -0.2), ha='right', va='top', fontsize=6)
+         
+        elif behavior_split==True and subprotocol_split==False:
+            #act
+            pos_act_roi_s_ = np.concatenate(pos_act_roi_s)
+            neg_act_roi_s_ = np.concatenate(neg_act_roi_s) 
+
+            final_act_pos = np.mean(pos_act_roi_s_, axis=0)
+            final_act_neg = np.mean(neg_act_roi_s_, axis=0)
+            final_act_ns = 1 - final_act_pos - final_act_neg
+
+            pt.annotate(AX[idx*2], 'Pos= %.1f %%' % (100 * final_act_pos),
+                    (1, 0), ha='right', va='top', fontsize=6)
+            pt.annotate(AX[idx*2], 'Neg= %.1f %%' % (100 * final_act_neg),
+                        (1, -0.2), ha='right', va='top', fontsize=6)
+            pt.annotate(AX[0], 'average over %i ROIs' % np.sum(nROIs),
+                        (1, -0.6), ha='center', va='top', fontsize=8)
+            
+            #rest
+            pos_rest_cond_s_ = np.concatenate(pos_rest_cond_s)
+            neg_rest_cond_s_ = np.concatenate(neg_rest_cond_s) 
+
+            final_rest_pos = np.mean(pos_rest_cond_s_, axis=0) 
+            final_rest_neg = np.mean(neg_rest_cond_s_, axis=0)
+            final_rest_ns = 1 - final_rest_pos - final_rest_neg
+
+            pt.annotate(AX[idx*2+1], 'Pos= %.1f %%' % (100 * final_rest_pos),
+                    (1, 0), ha='right', va='top', fontsize=6)
+            pt.annotate(AX[idx*2+1], 'Neg= %.1f %%' % (100 * final_rest_neg),
+                        (1, -0.2), ha='right', va='top', fontsize=6)
+            
+        elif behavior_split==False and subprotocol_split==True:
+            valid = [x for x in pos_roi_s if len(x[0]) == len(pos_roi_s[0][0])]
+            pos_roi_s_ = np.concatenate(valid, axis=0)
+
+            valid = [x for x in neg_roi_s if len(x[0]) == len(neg_roi_s[0][0])]
+            neg_roi_s_ = np.concatenate(valid, axis=0) 
+
+            final_pos = np.mean(pos_roi_s_, axis=0)
+            final_neg = np.mean(neg_roi_s_, axis=0)
+            final_ns = 1 - final_pos - final_neg
+            
+            offsets = np.cumsum([0] + [n - 1 for n in n_subprot_s_[:-1]])
+                
+            if isinstance(final_pos, float):
+                column_n =  idx + offsets[idx]
+                pt.annotate(AX[column_n], 'Pos= %.1f %%' % (100 * final_pos),
+                        (1, 0), ha='right', va='top', fontsize=6)
+                pt.annotate(AX[column_n], 'Neg= %.1f %%' % (100 * final_neg),
+                            (1, -0.2), ha='right', va='top', fontsize=6)
+            else: 
+                final_num = len(final_pos)
+                for i in range(final_num):
+                    column_n = i + idx + offsets[idx]
+                    pt.annotate(AX[column_n], 'Pos= %.1f %%' % (100 * final_pos[i]),
+                            (1, 0), ha='right', va='top', fontsize=6)
+                    pt.annotate(AX[column_n], 'Neg= %.1f %%' % (100 * final_neg[i]),
+                                (1, -0.2), ha='right', va='top', fontsize=6)
+        
+        elif behavior_split==True and subprotocol_split==True:
+            #act
+            valid = [x for x in pos_act_roi_s if len(x[0]) == len(pos_act_roi_s[0][0])]
+            pos_act_roi_s_ = np.concatenate(valid, axis=0)
+
+            valid = [x for x in neg_act_roi_s if len(x[0]) == len(neg_act_roi_s[0][0])]
+            neg_act_roi_s_ = np.concatenate(valid, axis=0) 
+
+            final_act_pos = np.mean(pos_act_roi_s_, axis=0)
+            final_act_neg = np.mean(neg_act_roi_s_, axis=0)
+            final_act_ns = 1 - final_act_pos - final_act_neg
+            
+            offsets = np.cumsum([0] + [n - 1 for n in n_subprot_s_[:-1]])
+                
+            if isinstance(final_act_pos, float):
+                column_n =  (idx + offsets[idx])*2
+                pt.annotate(AX[column_n], 'Pos= %.1f %%' % (100 * final_act_pos),
+                        (1, 0), ha='right', va='top', fontsize=6)
+                pt.annotate(AX[column_n], 'Neg= %.1f %%' % (100 * final_act_neg),
+                            (1, -0.2), ha='right', va='top', fontsize=6)
+            else: 
+                final_num = len(final_act_pos)
+                for i in range(final_num):
+                    column_n = (i + idx + offsets[idx])*2
+                    pt.annotate(AX[column_n], 'Pos= %.1f %%' % (100 * final_act_pos[i]),
+                            (1, 0), ha='right', va='top', fontsize=6)
+                    pt.annotate(AX[column_n], 'Neg= %.1f %%' % (100 * final_act_neg[i]),
+                                (1, -0.2), ha='right', va='top', fontsize=6)
+            
+            #rest
+            valid = [x for x in pos_rest_cond_s if len(x[0]) == len(pos_act_roi_s[0][0])]
+            pos_rest_cond_s_ = np.concatenate(valid, axis=0)
+
+            valid = [x for x in neg_rest_cond_s if len(x[0]) == len(neg_act_roi_s[0][0])]
+            neg_rest_cond_s_ = np.concatenate(valid, axis=0) 
+
+            final_rest_pos = np.mean(pos_rest_cond_s_, axis=0)
+            final_rest_neg = np.mean(neg_rest_cond_s_, axis=0)
+            final_rest_ns = 1 - final_rest_pos - final_rest_neg
+            
+            offsets = np.cumsum([0] + [n - 1 for n in n_subprot_s_[:-1]])
+
+            if isinstance(final_rest_pos, float):
+                column_n =  (idx + offsets[idx])*2 + 1
+                pt.annotate(AX[column_n], 'Pos= %.1f %%' % (100 * final_rest_pos),
+                        (1, 0), ha='right', va='top', fontsize=6)
+                pt.annotate(AX[column_n], 'Neg= %.1f %%' % (100 * final_rest_neg),
+                            (1, -0.2), ha='right', va='top', fontsize=6)
+            else: 
+                final_num = len(final_rest_pos)
+                for i in range(final_num):
+                    column_n = (i + idx + offsets[idx])*2 + 1
+                    pt.annotate(AX[column_n], 'Pos= %.1f %%' % (100 * final_rest_pos[i]),
+                            (1, 0), ha='right', va='top', fontsize=6)
+                    pt.annotate(AX[column_n], 'Neg= %.1f %%' % (100 * final_rest_neg[i]),
+                                (1, -0.2), ha='right', va='top', fontsize=6)
+
+        pt.annotate(AX[0], 'average over %i ROIs' % np.sum(nROIs),
+                        (1, -0.6), ha='center', va='top', fontsize=8)
+                       
+    #plot pie
+
+    if behavior_split==False and subprotocol_split==False:
+        pt.pie(data=[final_pos, final_neg, final_ns],
+        ax=AX[idx],
+        COLORS = colors)
+        AX[idx].set_title(f"{p.replace('Natural-Images-4-repeats',\
+                                        'natural-images')}")
+        
+    elif behavior_split==False and subprotocol_split==True: 
+            offsets = np.cumsum([0] + [n - 1 for n in n_subprot_s_[:-1]])
+            if isinstance(final_pos, float):
+                final_num = 1
+                column_n = idx + offsets[idx]
+                pt.pie(data=[final_pos, final_neg, final_ns],
+                ax=AX[column_n],
+                COLORS = colors)
+                AX[column_n].set_title(f"{p.replace('Natural-Images-4-repeats',\
+                                                    'natural-images')}")
+            else: 
+                final_num = len(final_pos)
+                for i in range(final_num):
+                    column_n = i + idx + offsets[idx]
+                    pt.pie(data=[final_pos[i], final_neg[i], final_ns[i]],
+                    ax=AX[column_n],
+                    COLORS = colors)
+                    AX[column_n].set_title(f"{p.replace('Natural-Images-4-repeats',\
+                                                        'natural-images')}")
+
+    elif behavior_split==True and subprotocol_split==False: 
+        pt.pie(data=[final_act_pos, final_act_neg, final_act_ns],
+            ax=AX[idx*2],
+            COLORS = colors)
+        pt.pie(data=[final_rest_pos, final_rest_neg, final_rest_ns],
+            ax=AX[idx*2+1],
+            COLORS = colors)
+        AX[idx*2].set_title(f"{p.replace('Natural-Images-4-repeats',\
+                                            'natural-images')}\n ACT")
+        AX[idx*2+1].set_title(f"{p.replace('Natural-Images-4-repeats',\
+                                            'natural-images')}\n REST")
+        
+    elif behavior_split==True and subprotocol_split==True: 
+        offsets = np.cumsum([0] + [n - 1 for n in n_subprot_s_[:-1]])
+    
+        if isinstance(final_act_pos, float):
+            final_num = 1
+            column_n = (idx + offsets[idx])*2 
+            pt.pie(data=[final_act_pos, final_act_neg, final_act_ns],
+            ax=AX[column_n],
+            COLORS = colors)
+            pt.pie(data=[final_rest_pos, final_rest_neg, final_rest_ns],
+                ax=AX[column_n+1],
+                COLORS = colors)
+            AX[column_n].set_title(f"{p.replace('Natural-Images-4-repeats',\
+                                                'natural-images')}\n ACT")
+            AX[column_n+1].set_title(f"{p.replace('Natural-Images-4-repeats',\
+                                                'natural-images')}\n REST")
+
+        else: 
+            final_num = len(final_act_pos)
+            for i in range(final_num):
+                column_n = (i + idx + offsets[idx])*2 
+                pt.pie(data=[final_act_pos[i], 
+                                final_act_neg[i], 
+                                final_act_ns[i]],
+                ax=AX[column_n],
+                COLORS = colors)
+
+                pt.pie(data=[final_rest_pos[i], 
+                                final_rest_neg[i], 
+                                final_rest_ns[i]],
+                    ax=AX[column_n+1],
+                    COLORS = colors)
+                AX[column_n].set_title(f"{p.replace('Natural-Images-4-repeats',\
+                                                    'natural-images')}\n ACT")
+                AX[column_n+1].set_title(f"{p.replace('Natural-Images-4-repeats',\
+                                                        'natural-images')}\n REST")
+    return 0
+    
+def plot_responsiveness_per_protocol(data_s,  
+                                     protocols=[''], 
+                                     by_average ='session', 
+                                     behavior_split=False, 
+                                     subprotocol_split=False, 
+                                     colors = ["#b40426", "#3b4cc0", "#bdbbbb"]):
+    
+    '''
+    Plot pie charts responsiveness (positive, negative, non-significative) 
+        for each protocol 
+        (possibility to split by subprotocol and or by behavioral state)
+
+    :param data_s: list of data
+    :param protocols: protocols whose responsiveness you want to plot
+    :param by_average: 'session' or 'ROI', results will be calculated 
+                by averaging results per session (default) or 
+                by averaging all rois 
+    :param behavior_split: plot for rest/running states separately or not (not by default)
+    :param subprotocol_split : plot for subprotocol separately or not (not by default)
+    :param colors : choose colors [pos, neg, ns] in this order!
+
+    returns 0
+    '''
+    n_subprot_s_ = get_num_protocols(data_s[0], protocols)
+
+    fig, AX = get_fig_ax(protocols, n_subprot_s_, behavior_split, subprotocol_split )
+    
+    for idx, p in enumerate(protocols):
+
+        nROIs = []
+        pos_session_s, neg_session_s = [], []
+        resp_cond_s, pos_roi_s, neg_roi_s = [], [], []
+        pos_act_session_s, neg_act_session_s = [], []
+        resp_act_cond_s,pos_act_roi_s, neg_act_roi_s   = [], [], []
+        pos_rest_session_s, neg_rest_session_s  = [], []
+        resp_rest_cond_s, pos_rest_cond_s, neg_rest_cond_s = [], [], []
+
+        calc_values(data_s,
+                    nROIs, 
+                    pos_session_s, neg_session_s,
+                    resp_cond_s, pos_roi_s, neg_roi_s, 
+                    pos_act_session_s, neg_act_session_s,
+                    resp_act_cond_s,pos_act_roi_s, neg_act_roi_s,
+                    pos_rest_session_s, neg_rest_session_s,
+                    resp_rest_cond_s, pos_rest_cond_s, neg_rest_cond_s,
+                    behavior_split, subprotocol_split,p)
+        
+        plot_values(fig, AX, idx,
+                    by_average, behavior_split, subprotocol_split, 
+                    nROIs, 
+                    pos_session_s, neg_session_s,
+                    pos_roi_s, neg_roi_s, 
+                    pos_act_session_s, neg_act_session_s,
+                    pos_act_roi_s, neg_act_roi_s,
+                    pos_rest_session_s, neg_rest_session_s,
+                    pos_rest_cond_s, neg_rest_cond_s, 
+                    n_subprot_s_, colors, p)
+        
+    return fig, AX
+
+
 #%% Load data
-#datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch1','NWBs')
+datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol',\
+                        'NDNF-WT-Dec-2022','NWBs_rebuilt')
+#datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','Vision-survey', \
+#                           'NDNF-Cre','NWBs')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 SESSIONS['nwbfiles'] = [os.path.basename(f) for f in SESSIONS['files']]
 
@@ -269,29 +707,38 @@ for idx, filename in enumerate(SESSIONS['files']):
     data.build_pupil_diameter()
     data_s.append(data)
 
+
 #%%
-################ PIE CHARTS RESPONSIVENESS PER PROTOCOL ###################################################
-#protocols = ["static-patch", "drifting-gratings", "Natural-Images-4-repeats"]
+################ PIE CHARTS RESPONSIVENESS PER PROTOCOL ##########################################
+protocols = ["static-patch", "drifting-gratings", "Natural-Images-4-repeats"]
+#protocols = ["static-patch", "Natural-Images-4-repeats", "looming-stim"]
+#protocols = ["static-patch"]
+#protocols = ["drifting-gratings"]
+#protocols = ["Natural-Images-4-repeats"]
 #protocols = ['static-patch', 
 #             'drifting-gratings', 
 #             'looming-stim',
 #             'Natural-Images-4-repeats', 
-#             'moving-dots']#, 
+#             'moving-dots', 
 #             'random-dots']
-#protocols = ['static-patch', 'looming-stim']
-
-protocols = ['static-patch', 
-             'drifting-grating', #my data!!! "s" for Yann's data
-             'looming-stim',
-             'Natural-Images-4-repeats', 
-             'moving-dots']
+#protocols = ['looming-stim']
 
 
-fig, AX  = pt.figure(axes = (len(protocols),1))
+#protocols = ['static-patch', 
+#             'drifting-grating', #my data!!! "s" for Yann's data
+#             'looming-stim',
+#             'Natural-Images-4-repeats', 
+#             'moving-dots'] --
 
-for idx, p in enumerate(protocols):
-    plot_responsiveness2_per_protocol(data_s, AX, idx, p, type='ROI')
+#protocols = ["moving-dots"] -
 
+fig_responsiveness, _ = plot_responsiveness_per_protocol(data_s, 
+                                                        protocols=protocols, 
+                                                        by_average='ROI', 
+                                                        behavior_split=True, 
+                                                        subprotocol_split=True)
+fig_responsiveness.savefig(f'piecharts.png', format='png', dpi=600, transparent=True)
+#fig_responsiveness.savefig(os.path.expanduser('~/Output_expe/In_Vivo/ANR-NDNF/responsiveness.svg'))
 #%%
 ############################################################################################################
 ############################## PLOT RESPONSIVENESS FOR GIVEN PROTOCOL ######################################
@@ -302,12 +749,12 @@ for idx, p in enumerate(protocols):
 ########################################### STATIC PATCH     ###############################################
 protocol="static-patch"
 #%%
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch1','NWBs')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','Vision-survey','NDNF-Cre','NWBs')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 study_responsiveness(SESSIONS=SESSIONS, index=0, protocol=protocol)
 study_responsiveness_all(SESSIONS=SESSIONS, protocol=protocol)
 #%%
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
+datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-old-protocol','NDNF-WT-Dec-2022','NWBs_rebuilt')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 study_responsiveness(SESSIONS=SESSIONS, index=0, protocol=protocol)
 study_responsiveness_all(SESSIONS=SESSIONS, protocol=protocol)
@@ -340,103 +787,3 @@ datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments'
 SESSIONS = scan_folder_for_NWBfiles(datafolder)
 study_responsiveness(SESSIONS=SESSIONS, index=0, protocol=protocol)
 study_responsiveness_all(SESSIONS=SESSIONS, protocol=protocol)
-
-
-############################################################################################################
-############################################ Plot per protocol #############################################
-############################################################################################################
-#%%  ERROR TO FIX
-'''
-def responsiveness_sessions_vs_protocols(SESSIONS, protocols):
-    Values_m = []
-    X = []
-
-    for p, protocol in enumerate(protocols):
-        
-        values_per_file = []
-        significance_per_file = []
-        
-        for f, filename in enumerate(SESSIONS['files']):
-            data = Data(filename, verbose=False)
-            data.build_dFoF()
-            stat_test_props = dict(interval_pre=[-1.,0],                                   
-                                interval_post=[1.,2.],                                   
-                                test='ttest')
-            ep = EpisodeData(data,
-                            protocol_name=protocol,
-                            quantities=['dFoF'], 
-                            verbose=False)
-        
-            #summary_data = ep.compute_summary_data(stat_test_props,
-            #                                    exclude_keys=['repeat', 'angle', 'contrast'],
-            #                                    response_significance_threshold=0.05,
-            #                                    response_args={})
-            summary_data = pre_post_statistics(ep,
-                                               episode_cond = ep.find_episode_cond(),
-                                               response_args = {},
-                                               response_significance_threshold=0.05,
-                                               stat_test_props=stat_test_props,
-                                               repetition_keys=['repeat', 'angle', 'contrast'])
-
-            values_per_file.append(summary_data['value'].flatten())
-            significance_per_file.append(summary_data['significant'].flatten())
-        
-        X.append(np.arange(0,len(SESSIONS['files']),1))
-        Values_m.append(values_per_file)
-
-    # ## plot
-   
-    i,j = 0,0
-
-    fig, AX = plt.subplots(2, 4, figsize=(10, 5))
-
-    for p, protocol in enumerate(protocols):
-        try: 
-            AX[i][j].bar(X[p], np.array(Values_m[p]).flatten())
-        except Exception as e:
-            AX[i][j].bar(X[p], np.array(np.mean(Values_m[p], axis=1)).flatten())
-        AX[i][j].axhline(0.0, c='black', linewidth = 0.5)
-        AX[i][j].set_xlabel('File #')
-        AX[i][j].set_title(f'{protocol}')
-        AX[i][j].set_xticks(X[p])
-
-        if j==0:
-            AX[i][j].set_ylabel('responsiveness')
-
-        if protocol!='Natural-Images-4-repeats':
-            AX[i][j].set_title(f'{protocol}')
-        else: 
-            AX[i][j].set_title('Natural-Images')
-
-        #update position next graph
-        if j<3:
-            j+=1
-        else: 
-            i+=1
-            j=0
-
-    AX = AX.flatten()
-    n_files = len(protocols)
-    print(n_files)
-    for idx in range(n_files, len(AX)):
-        fig.delaxes(AX[idx])
-    fig.tight_layout()
-    return 0
-# MY DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-Cre-batch1','NWBs')
-SESSIONS = scan_folder_for_NWBfiles(datafolder)
-protocols = ['static-patch', 'drifting-grating' ,'looming-stim',
-             'Natural-Images-4-repeats','moving-dots',
-             'drifting-surround','quick-spatial-mapping']
-responsiveness_sessions_vs_protocols(SESSIONS=SESSIONS, protocols=protocols)
-#######################################################################################################################
-# YANN's DATA
-datafolder = os.path.join(os.path.expanduser('~'), 'DATA', 'In_Vivo_experiments','NDNF-WT-Dec-2022','NWBs_rebuilt')
-SESSIONS = scan_folder_for_NWBfiles(datafolder)
-protocols = ['static-patch', 'drifting-gratings', 'looming-stim',
-              'Natural-Images-4-repeats', 'moving-dots', 
-              'random-dots']
-responsiveness_sessions_vs_protocols(SESSIONS=SESSIONS, protocols=protocols)
-########################################################################################################################
-'''
-
