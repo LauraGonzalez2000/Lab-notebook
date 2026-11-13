@@ -111,6 +111,13 @@ def plot_effect(Ep,
     
     return fig
 
+#%%
+# Other datasets (different base folders):
+# 8ori2contrasts: E:/DATA/In_Vivo_experiments/opto/ffSG-8ori-2contrasts-opto/NDNF-Cre/NWBs/
+#     2026_08_17-12-18-40.nwb, 2026_08_17-14-17-42.nwb
+# stg old config: ~/DATA/In_Vivo_experiments/Other/test_opto/2025_10_03/NWBs_/
+#     2025_10_03-12-02-05.nwb, 2025_10_03-14-48-12.nwb
+
 # %%
 datafolder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'ffSG-8ori-2contrasts-opto','NDNF-Cre','NWBs')
 SESSIONS = scan_folder_for_NWBfiles(datafolder)

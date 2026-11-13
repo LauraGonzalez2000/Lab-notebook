@@ -4,7 +4,7 @@ import subprocess
 
 # where the protocols (json files) and the built movies are created
 OUTPUT_FOLDER = os.path.expanduser(
-    '~/Library/CloudStorage/OneDrive-ICM/Lab-Notebook/visualStim-protocols/Sofia')
+    '~\\OneDrive - ICM\\Lab-Notebook\\visualStim-protocols')
 
 # natural images of the protocols: 1280x720 copies (see prepare_images.py)
 NI_FOLDER = os.path.join(OUTPUT_FOLDER, 'NI_bank')

@@ -87,6 +87,14 @@ f = h5py.File(os.path.join(base,'Thy1GCaMP-NDNF-Cre','Processed', '2026_10_05', 
 #path = os.path.join(base,'C57BL6J','NWBs', '2026_10_02-17-18-59.nwb')
 #f = h5py.File(os.path.join(base,'C57BL6J','Processed', '2026_10_02', '17-18-59', 'h5-10022026-1644-001', 'Ch2-Green-plane0.h5'))
 
+path = os.path.join(base,'SST-Cre','NWBs', '2026_11_05-15-09-25.nwb')
+f = h5py.File(os.path.join(base,'SST-Cre','Processed', '2026_11_05', '15-09-25', 'h5-11052026--006', 'Ch2-Green-plane0.h5'))
+
+
+
+path = os.path.join(base,'SST-Cre','NWBs', '2026_11_05-17-05-23.nwb')
+f = h5py.File(os.path.join(base,'SST-Cre','Processed', '2026_11_05', '17-05-23', 'h5-11052026--007', 'Ch2-Green-plane0.h5'))
+
 
 data = Data(path)
 data.build_rawFluo()
@@ -97,7 +105,8 @@ opto_sampling_rawFluo = data.build_opto(specific_time_sampling=data.t_rawFluo)
 #%% FOV mean image
 _ = show_CaImaging_FOV(data, NL=4)
 _ = show_CaImaging_FOV(data, NL=4, 
-                       roiIndex = np.arange(data.nROIs))
+                       roiIndex = np.arange(data.nROIs),
+                       with_ROI_annotation=True)
 roiIndices = np.arange(data.nROIs)
 
 meanImg, _ = get_FOV_image(data, 'meanImg')
