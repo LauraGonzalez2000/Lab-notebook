@@ -482,7 +482,6 @@ def select_sessions(**criteria):
 def led_color(s):
     return SETUP_COLORS.get(s.get('setup'), DEFAULT_LED_COLOR)
 
-
 # %%
 # ------------------------------------------------------------------
 # Choose session + protocol

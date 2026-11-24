@@ -1,4 +1,4 @@
-import os, subprocess, pathlib
+import os, subprocess, pathlib, json
 import itertools
 
 Screen="Dell-2020"
@@ -10,16 +10,30 @@ y=0.
 protocol_folder = os.path.join(os.path.expanduser('~'),
             'OneDrive - ICM', 'Lab-Notebook', 'visualStim-protocols')
 
+protocol_folder_demo = os.path.join(os.path.expanduser('~'),
+            'OneDrive - ICM', 'Lab-Notebook', 'visualStim-protocols', 'demo')
 
-def build_movie(json_protocol, name='temp', rm=True):
+# '~' kept unexpanded: physion expands it when loading the images (works for any user name)
+NI_BANK_ONEDRIVE = '~/OneDrive - ICM/Lab-Notebook/visualStim-protocols/NI_bank'
+
+
+def build_movie(json_protocol, name='temp', rm=True, demo=False):
 
     with open('%s.json' % name, 'w') as f:
         f.write(json_protocol)
-        
-    if 'posix' in os.name:
-        cmd = 'python -m physion.visual_stim.build ../../%s.json -o "%s"' % (name, protocol_folder)
-    else:
-        cmd = 'python -m physion.visual_stim.build ..\\..\\%s.json -o "%s"' % (name, protocol_folder)
+
+    if not demo: 
+        if 'posix' in os.name:
+            cmd = 'python -m physion.visual_stim.build ../../%s.json -o "%s"' % (name, protocol_folder)
+        else:
+            cmd = 'python -m physion.visual_stim.build ..\\..\\%s.json -o "%s"' % (name, protocol_folder)
+
+    else: 
+        if 'posix' in os.name:
+            cmd = 'python -m physion.visual_stim.build ../../%s.json -o "%s"' % (name, protocol_folder_demo)
+        else:
+            cmd = 'python -m physion.visual_stim.build ..\\..\\%s.json -o "%s"' % (name, protocol_folder_demo)
+       
     
     p = subprocess.Popen(cmd,
             cwd = os.path.join('.', 'physion', 'src'),
@@ -109,22 +123,26 @@ def grey_screen(Screen='', Nrepeat=1, x=0, y=0):
 ###      natural images                 ###
 ###########################################
 
-def natural_images(Screen='', Nrepeat=1, x=0, y=0):
+def natural_images(Screen='', Nrepeat=10, x=0, y=0,
+                   NI_FOLDER=NI_BANK_ONEDRIVE):
   return """{
         "Presentation": "Stimuli-Sequence",
-        "Stimulus": "natural_image",
+        "Stimulus": "images",
         "Screen": "%s",
         "units": "lin-deg",
+        "NI_FOLDER": %s,
         "-----------------------------------------------------------------------1":0,
         "presentation-duration": 2.0,
-        "Image-ID": 1,
-        "radius": 200,
+        "degree-per-pixel-of-image": 0.1432,
         "-----------------------------------------------------------------------2":0,
-        "contrast-1": 0.2, "contrast-2": 1.0, "N-contrast": 3,
+        "Image-ID-1": "2.png",
+        "radius": 200,
         "-----------------------------------------------------------------------3":0,
-        "N-repeat": %i 
-}  """ % (Screen, Nrepeat)
-
+        "contrast-1": 0.2, "contrast-2": 1.0, "N-contrast": 3,
+        "-----------------------------------------------------------------------4":0,
+        "N-repeat": %i,
+        "presentation-interstim-period": 4
+}  """ % (Screen, json.dumps(NI_FOLDER), Nrepeat)
 
 ###########################################
 ###      looming                        ###
@@ -148,6 +166,34 @@ def looming(Screen='', Nrepeat=1, x=0, y=0):
         "-----------------------------------------------------------------------3":0,
         "N-repeat": %i 
 } """ % (Screen, x, y, Nrepeat)
+
+###########################################
+###      full-field static grating       ##
+###########################################
+
+import json
+def FFgratings(angles, contrasts, Nrepeat=15,
+               Screen=Screen):
+    return json.dumps({
+        "Presentation": "Randomized-Sequence",
+        "Stimulus": "grating",
+        "Screen": Screen,
+        "units": "lin-deg",
+        "movie_refresh_freq": 30.0,
+        "shuffling-seed": 1,
+        "presentation-duration": 2,
+        "presentation-prestim-period": 5,
+        "presentation-poststim-period": 5,
+        "presentation-interstim-period": 5,
+        "presentation-interstim-jitter": 2,
+        "presentation-blank-screen-color": 0.5,
+        "N-repeat": Nrepeat,
+        "angle-1": angles[0], "angle-2": angles[1], "N-angle": angles[2],
+        "contrast-1": contrasts[0], "contrast-2": contrasts[1], "N-contrast": contrasts[2],
+        "speed": 0,
+        "spatial-freq": 0.04,
+        "radius": 200,
+        "phase": 90.0}, indent=4)
 
 
 def MultiProtocol(Screen='', 
@@ -213,6 +259,122 @@ def MultiProtocol(Screen='',
 
     return multiprotocol
 
+def MultiProtocol_single1(Screen='', 
+                        Nrepeat=None, 
+                        interstim=6.0,
+                        jitter=2.0,
+                        x=0, y=0):
+   
+    multiprotocol = """{
+        "Presentation": "multiprotocol",
+        "shuffling" :"full-with-alternate-even-odd-repeats",
+        "shuffling-seed" :34,
+        "movie_refresh_freq":30.0,
+        "units":"cm",
+        "Screen": "%s",
+        "Opto-stim":{
+            "pre_window":1.0,
+            "post_window":1.0,
+            "Protocol-1":{
+                "trials":"odd"
+            }
+        },
+        "presentation-prestim-period": 10.0,
+        "presentation-poststim-period": 10.0,
+        "presentation-interstim-period": %.1f,
+        "presentation-interstim-jitter": %.1f,
+        "presentation-blank-screen-color": 0.5,
+    """ % (Screen, interstim, jitter)
+
+    i = 1 # protocol counter
+    for protocol_func, protocol_name, nrepeats in zip(
+                    [FFgratings],
+                    #['2ori8contrasts'],
+                    ['8ori2contrasts'],
+                    [16]
+                    ):
+
+        if Nrepeat is not None:
+            n=Nrepeat
+        else:
+            n=nrepeats
+
+        #protocol = protocol_func(angles=(0,90,2), contrasts=(0,1,8), Nrepeat=n,
+        #                Screen=Screen)
+
+        protocol = protocol_func(angles=(0,157.5,8), contrasts=(0.5,1,2), Nrepeat=n,
+                                Screen=Screen)
+
+        with open('protocol-%s.json' % protocol_name, 'w') as f:
+            f.write(protocol)
+
+        multiprotocol += '  "Protocol-%i": "protocol-%s.json",\n' % (i, protocol_name)
+
+        i+=1
+
+
+    multiprotocol = multiprotocol[:-2]+'}'
+
+    return multiprotocol
+
+def MultiProtocol_single2(Screen='', 
+                        Nrepeat=None, 
+                        interstim=6.0,
+                        jitter=2.0,
+                        x=0, y=0):
+   
+    multiprotocol = """{
+        "Presentation": "multiprotocol",
+        "shuffling" :"full-with-alternate-even-odd-repeats",
+        "shuffling-seed" :34,
+        "movie_refresh_freq":30.0,
+        "units":"cm",
+        "Screen": "%s",
+        "Opto-stim":{
+            "pre_window":1.0,
+            "post_window":1.0,
+            "Protocol-1":{
+                "trials":"odd"
+            }
+        },
+        "presentation-prestim-period": 10.0,
+        "presentation-poststim-period": 10.0,
+        "presentation-interstim-period": %.1f,
+        "presentation-interstim-jitter": %.1f,
+        "presentation-blank-screen-color": 0.5,
+    """ % (Screen, interstim, jitter)
+
+    i = 1 # protocol counter
+    for protocol_func, protocol_name, nrepeats in zip(
+                    [FFgratings],
+                    ['2ori8contrasts'],
+                    #['8ori2contrasts'],
+                    [16]
+                    ):
+
+        if Nrepeat is not None:
+            n=Nrepeat
+        else:
+            n=nrepeats
+
+        protocol = protocol_func(angles=(0,90,2), contrasts=(0,1,8), Nrepeat=n,
+                        Screen=Screen)
+
+        #protocol = protocol_func(angles=(0,157.5,8), contrasts=(0.5,1,2), Nrepeat=n,
+        #                        Screen=Screen)
+
+        with open('protocol-%s.json' % protocol_name, 'w') as f:
+            f.write(protocol)
+
+        multiprotocol += '  "Protocol-%i": "protocol-%s.json",\n' % (i, protocol_name)
+
+        i+=1
+
+
+    multiprotocol = multiprotocol[:-2]+'}'
+
+    return multiprotocol
+
 
 if 0:
   build_movie(looming(Screen=Screen, Nrepeat=1, x=x, y=y),
@@ -225,6 +387,22 @@ if 0:
 
 
 if 1:
-  build_movie(MultiProtocol(Screen=Screen, Nrepeat=None), # Nrepeat=None to have the desired ones
+  build_movie(MultiProtocol(Screen=Screen, Nrepeat=2), # Nrepeat=None to have the desired ones
               name='vision-survey-short+1sPrePostOpto',
-              rm=False)
+              rm=False, 
+              demo=True)
+  
+if 1:
+  build_movie(MultiProtocol_single1(Screen=Screen, Nrepeat=2), # Nrepeat=None to have the desired ones
+              name='ffSG-8ori-2ctrst+1sPrePostOpto',
+              rm=False,
+              demo=True)
+
+if 1:
+  build_movie(MultiProtocol_single2(Screen=Screen, Nrepeat=2), # Nrepeat=None to have the desired ones
+              name='ffSG-2ori-8ctrst+1sPrePostOpto',
+              rm=False,
+              demo=True)
+
+
+  

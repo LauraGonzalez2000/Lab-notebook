@@ -15,7 +15,7 @@ from physion.intrinsic import tools as intrinsic_analysis
 
 import matplotlib.pylab as plt
 from PIL import Image
-sys.path += ['..']
+sys.path += ['../utils_']
 from PDF_layout import PDF4
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.backends.backend_pdf import PdfPages
@@ -152,7 +152,23 @@ def create_PDF(dict_annotation, fig1, fig2, fig3, fig4, fig5, fig6, fig7, segmen
 
 #%%
 #base_folder = os.path.join(os.path.expanduser('~'),'DATA', 'In_Vivo_experiments', 'Ori-contrasts','NDNF-Cre','Processed', 'intrinsic_img','2026_03_10')
-base_folder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments','opto', 'Thy1GCaMP-NDNF-Cre','Processed', 'intrinsic_img', '2026_08_26', '16-37-45')
+base_folder = os.path.join(Path("E:/"), 'DATA',
+                            'In_Vivo_experiments','opto', 
+                            'vision-survey-opto','Thy1GCaMP-NDNF-Cre',
+                            'Processed', 'intrinsic_img', 
+                            '2026_08_26')#, '16-37-45')
+
+base_folder = os.path.join(os.path.expanduser('~'),'DATA', 
+                           'In_Vivo_experiments',
+                            'Vision-survey','NDNF-FLIP-NR1-FLOX',
+                            'Processed', 'intrinsic_img', 
+                            '2026_11_17')
+
+
+if os.path.exists(base_folder):
+    print(f"Folder exists: {base_folder}")
+else:
+    print(f"Folder does not exist: {base_folder}")
 #%%
 '''
 segmentation_params={'phaseMapFilterSigma': 8.,

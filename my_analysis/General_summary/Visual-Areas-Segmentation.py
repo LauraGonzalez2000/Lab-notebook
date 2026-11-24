@@ -13,6 +13,7 @@
 # load packages:
 import numpy as np
 import sys
+
 import os
 sys.path += ['../../physion/src'] # add src code directory for physion
 import physion.utils.plot_tools as pt
@@ -28,14 +29,24 @@ from pathlib import Path
 # ## Load data
 
 # %%
-dataFolder = os.path.join(Path("E:/"), 'DATA', 
-                          'In_Vivo_experiments','opto', 
-                          'Thy1GCaMP-NDNF-Cre','Processed',
-                          'intrinsic_img','2026_08_14', '11-24-32')
+#dataFolder = os.path.join(Path("E:/"), 'DATA', 
+#                          'In_Vivo_experiments','opto', 
+#                          'Thy1GCaMP-NDNF-Cre','Processed',
+#                          'intrinsic_img','2026_08_14', '11-24-32')
 
+dataFolder = os.path.join(Path("E:/"),'DATA', 
+                           'In_Vivo_experiments','opto',
+                            'vision-survey-opto','Thy1GCaMP-NDNF-Cre',
+                            'Processed', 'intrinsic_img', 
+                            '2026_08_26','16-37-45')
+
+#os.path.expanduser('~')
+#'11-34-46'
+#'12-02-03'
+#'15-18-50'
 
 # vasculature picture
-imVasc = np.array(Image.open(os.path.join(dataFolder, 'vasculature-012.tif')))
+imVasc = np.array(Image.open(os.path.join(dataFolder, 'vasculature.tif')))
 fig, ax = pt.figure(ax_scale=(2,2))
 ax.imshow(imVasc**1, cmap=plt.cm.gray) 
 plt.axis('off');
@@ -56,17 +67,33 @@ intrinsic_analysis.plot_retinotopic_maps(maps, map_type='altitude');
 intrinsic_analysis.plot_retinotopic_maps(maps, map_type='azimuth');
 
 # %% [markdown]
+
 # # Perform Segmentation
 
 # %%
 data = intrinsic_analysis.build_trial_data(maps)
 data['vasculatureMap'] = imVasc[::int(imVasc.shape[0]/data['aziPosMap'].shape[0]),\
                                 ::int(imVasc.shape[1]/data['aziPosMap'].shape[1])]
-segmentation_params={'phaseMapFilterSigma': 1.5,
-                    'signMapFilterSigma': 2,
+segmentation_params={'phaseMapFilterSigma': 3,
+                    'signMapFilterSigma': 7,
                     'signMapThr': 0.5,
                     'eccMapFilterSigma': 10.,
-                    'splitLocalMinCutStep': 10.,
+                    'splitLocalMinCutStep': 15.,
+                    'mergeOverlapThr': 0.2,
+                    'closeIter': 3,
+                    'openIter': 3,
+                    'dilationIter': 15,
+                    'borderWidth': 1,
+                    'smallPatchThr': 400,
+                    'visualSpacePixelSize': 0.5,
+                    'visualSpaceCloseIter': 15,
+                    'splitOverlapThr': 1.2}
+'''
+segmentation_params={'phaseMapFilterSigma': 1.5,
+                    'signMapFilterSigma': 3,
+                    'signMapThr': 0.5,
+                    'eccMapFilterSigma': 10.,
+                    'splitLocalMinCutStep': 15.,
                     'mergeOverlapThr': 0.2,
                     'closeIter': 3,
                     'openIter': 3,
@@ -76,6 +103,7 @@ segmentation_params={'phaseMapFilterSigma': 1.5,
                     'visualSpacePixelSize': 0.5,
                     'visualSpaceCloseIter': 15,
                     'splitOverlapThr': 1.2}
+'''
 data['params'] = segmentation_params
 trial = RetinotopicMapping.RetinotopicMappingTrial(**data)
 trial.processTrial(isPlot=False) # TURN TO TRUE TO VISUALIZE THE SEGMENTATION STEPS
@@ -92,6 +120,29 @@ h = RetinotopicMapping.plotPatches(trial.finalPatches,
                                    plotaxis=ax)
 ax.axis('off');
 #fig.savefig(os.path.join(os.path.expanduser('~'), # 'Desktop', 'fig.svg'))
+
+# %% [markdown]
+# # Save the segmentation
+# (picked up by Build-Notebook-Dataviz-for-All through utils_/window_FOV.py)
+
+# %%
+# optional: name the areas, e.g. {'patch01':'V1', 'patch02':'LM'}
+AREA_NAMES = {}
+
+segmentation = {
+    'patches': {key: {'mask': np.array(patch.array, dtype=np.uint8),
+                      'sign': int(patch.sign),
+                      'name': AREA_NAMES.get(key, key)}
+                for key, patch in trial.finalPatches.items()},
+    'map_shape': trial.finalPatches[list(trial.finalPatches)[0]].array.shape\
+                        if len(trial.finalPatches)>0 else data['aziPosMap'].shape,
+    'vasculature_file': 'vasculature.tif',
+    'vasculature_shape': imVasc.shape,
+    'params': segmentation_params,
+}
+np.save(os.path.join(dataFolder, 'segmentation.npy'), segmentation)
+print('segmentation saved in %s (%i areas)' %\
+        (os.path.join(dataFolder, 'segmentation.npy'), len(segmentation['patches'])))
 
 # %% [markdown]
 # # Summary Plot
@@ -132,8 +183,10 @@ for ax in AX:
     ax.axis('equal')
     ax.axis('off')    
 
-fig.savefig(os.path.join(os.path.expanduser('~'), 
+fig.savefig(os.path.join(os.path.expanduser('~'),
                         'Desktop', 'fig.svg'))
+# copy next to the segmentation, to check it by eye
+fig.savefig(os.path.join(dataFolder, 'segmentation.png'), dpi=150)
 # %% [markdown]
 ### Identify the Center (<20˚) of V1
 # 

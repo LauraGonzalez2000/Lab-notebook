@@ -3,8 +3,10 @@
 import sys, pathlib, os
 import numpy as np
 
-sys.path += ['../physion/src'] # add src code directory for physion
+sys.path += ['../physion/src', '../../physion/src'] # add src code directory for physion
+sys.path += ['../'] # my_analysis folder (for utils_)
 from physion.utils import plot_tools as pt
+from utils_.window_FOV import show_window_with_FOV, show_window_with_areas
 
 from physion.analysis.read_NWB import Data,\
     scan_folder_for_NWBfiles
@@ -17,7 +19,7 @@ pt.set_style('dark')
 
 # %%
 from pathlib import Path
-folder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments', 'opto', 'vision-survey-opto', 'C57BL6J')
+folder = os.path.join(Path("E:/"), 'DATA', 'In_Vivo_experiments', 'opto', 'vision-survey-opto', 'Thy1GCaMP-NDNF-Cre')
 
 notebook_folder =\
     os.path.join(os.path.expanduser('~'), 
@@ -25,7 +27,6 @@ notebook_folder =\
 
 redo_figs = True
 
-# %%
 dataset = scan_folder_for_NWBfiles(folder)
 
 # %%
@@ -71,25 +72,43 @@ def single_rec(filename):
     text += '## Field of View \n'
 
     if redo_figs:
-        fig, AX = pt.figure(axes=(3,1), ax_scale=(1.3,2.6), 
-                            top=0.05, bottom=0.05, wspace=0.1)
+        # one figure (2 rows x 3 columns):
+        #   top:    window + zero (cross) + FOV (square) | window + visual areas + FOV | (empty)
+        #   bottom: meanImg | max projection | meanImg with ROIs
+        #   (window: DataTable.xlsx and Processed/ in `folder`)
+        #   square panels (ax_scale) and a small gap between the rows (hspace),
+        #   just enough for the 2-line titles of the window panels
+        fig, AX = pt.figure(axes=(3,2), ax_scale=(1.3,2.4),
+                            top=0.45, bottom=0.05, wspace=0.2, hspace=0.2)
 
-        #
-        show_CaImaging_FOV(data, key='meanImg', 
-                        cmap=pt.get_linear_colormap('k', 'tab:green'),
-                        NL=3, # non-linearity to normalize image
-                        with_annotation=True,
-                        ax=AX[0])
-        show_CaImaging_FOV(data, key='max_proj', 
-                        cmap=pt.get_linear_colormap('k', 'tab:green'),
-                        NL=3, # non-linearity to normalize image
-                        with_annotation=False, ax=AX[1])
-        show_CaImaging_FOV(data, key='meanImg', 
-                        cmap=pt.get_linear_colormap('k', 'tab:green'),
-                        NL=3,
-                        roiIndex=range(data.nROIs), 
-                        with_annotation=False, ax=AX[2])
-        pt.save(fig, os.path.join(notebook_folder, 'figs'), 
+        # --- top row: cranial window ---
+        for func, ax in zip([show_window_with_FOV, show_window_with_areas], AX[0]):
+            try:
+                func(data, folder, ax=ax)
+            except BaseException as be:
+                print(' [!!] %s: %s' % (func.__name__, be))
+                ax.axis('off')
+        AX[0][2].axis('off')
+
+        # --- bottom row: 2P field of view ---
+        cmap = pt.get_linear_colormap('k', 'tab:green')
+        show_CaImaging_FOV(data, key='meanImg', cmap=cmap,
+                           NL=3, # non-linearity to normalize image
+                           with_annotation=True, ax=AX[1][0])
+        show_CaImaging_FOV(data, key='max_proj', cmap=cmap,
+                           NL=3,
+                           with_annotation=True, ax=AX[1][1])
+        show_CaImaging_FOV(data, key='meanImg', cmap=cmap,
+                           NL=3,
+                           roiIndex=range(data.nROIs),
+                           with_annotation=True, ax=AX[1][2])
+        # 180° rotation of the 2P images (and ROIs), to match the window orientation
+        for ax in AX[1]:
+            ax.invert_xaxis()
+            ax.invert_yaxis()
+
+        # save once, when all panels are drawn
+        pt.save(fig, os.path.join(notebook_folder, 'figs'),
                 fn+'-FOV.svg', dpi=75)
 
     text += '![](figs/%s)    \n \n' % (fn+'-FOV.svg')
@@ -161,7 +180,7 @@ def single_rec(filename):
     with open(md, 'w') as f:
         f.write(text)
     return text
-
+    
 text = single_rec(dataset['files'][0])
 print(text)
 # %%
